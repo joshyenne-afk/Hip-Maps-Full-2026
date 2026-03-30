@@ -1,0 +1,1720 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HipMaps Pinpointer</title>
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🗺️</text></svg>">
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+        rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#f26321",
+                        "secondary": "#2E3192",
+                        "background-dark": "#0f172a",
+                        "glass-bg": "rgba(15, 23, 42, 0.7)",
+                        "glass-border": "rgba(255, 255, 255, 0.08)",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    boxShadow: {
+                        'glow': '0 0 15px -3px rgba(242, 99, 33, 0.3)',
+                        'glass': '0 8px 32px 0 rgba(0, 0, 0, 0.37)',
+                    }
+                },
+            },
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            min-height: 100vh;
+            color: #e2e8f0;
+        }
+
+        /* Brand Colors */
+        :root {
+            --brand-orange: #F26522;
+            --brand-blue: #2E3192;
+            --brand-light-blue: #1BFFFF;
+        }
+
+        /* Glass Panel Style */
+        .glass-card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+        }
+
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        /* Custom scrollbar */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        #map {
+            height: 100%;
+            min-height: 500px;
+            border-radius: 12px;
+        }
+
+        .location-item {
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border-radius: 10px;
+            margin-bottom: 4px;
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .location-item:hover {
+            transform: translateX(2px);
+            background: rgba(30, 41, 59, 0.8);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .gm-style-iw {
+            padding: 8px !important;
+        }
+
+        .info-window-content {
+            font-size: 14px;
+            max-width: 250px;
+            color: #1e293b;
+        }
+
+        .info-window-content h3 {
+            font-size: 16px;
+            font-weight: bold;
+            margin: 0 0 5px 0;
+            color: #1e293b;
+        }
+
+        .info-window-content p {
+            margin: 0 0 10px 0;
+            color: #4b5563;
+        }
+
+        .info-window-content textarea {
+            border: 1px solid #cbd5e1;
+            width: 100%;
+            font-family: inherit;
+            font-size: 14px;
+            padding: 6px 8px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            color: #1e293b;
+            background: #f8fafc;
+        }
+
+        .info-window-content a {
+            color: #f26321;
+            text-decoration: none;
+            margin-right: 15px;
+        }
+
+        .info-window-content a:hover {
+            text-decoration: underline;
+        }
+
+        .info-window-content .iw-button {
+            background: linear-gradient(135deg, #f26321, #e05515);
+            border: none;
+            color: white;
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 4px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            margin-left: 4px;
+            transition: all 0.2s;
+            box-shadow: 0 2px 4px rgba(242, 99, 33, 0.3);
+        }
+
+        .info-window-content .iw-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba(242, 99, 33, 0.4);
+        }
+
+        .location-item.active {
+            background-color: rgba(242, 99, 33, 0.15);
+            border-left: 4px solid #f26321;
+            box-shadow: 0 0 12px rgba(242, 99, 33, 0.1);
+        }
+
+        .location-item.error {
+            background-color: rgba(239, 68, 68, 0.1);
+            border-left: 4px solid #ef4444;
+        }
+
+        /* Bounce Animation */
+        @keyframes bounce-gentle {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+
+        .animate-bounce-gentle {
+            animation: bounce-gentle 2s infinite ease-in-out;
+        }
+
+        /* Modern Button - Brand Orange */
+        .btn-primary {
+            background: #F26522;
+            color: white;
+            font-weight: 600;
+            padding: 12px 24px;
+            border-radius: 12px;
+            transition: all 0.2s;
+            box-shadow: 0 0 15px -3px rgba(242, 101, 34, 0.3);
+            border: none;
+        }
+
+        .btn-primary:hover {
+            background: #d9531e;
+            transform: translateY(-1px);
+            box-shadow: 0 0 20px -3px rgba(242, 101, 34, 0.5);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0) scale(0.98);
+        }
+
+        .btn-success {
+            background: #2E3192;
+            color: white;
+            font-weight: 600;
+            padding: 12px 24px;
+            border-radius: 12px;
+            transition: all 0.2s;
+            box-shadow: 0 4px 6px -1px rgba(46, 49, 146, 0.3);
+        }
+
+        .btn-success:hover {
+            background: #1e2066;
+            transform: translateY(-1px);
+        }
+
+        /* Drop Zone Polish - Dark Mode */
+        #drop-zone {
+            border: 2px dashed rgba(255, 255, 255, 0.1);
+            background-color: rgba(255, 255, 255, 0.03);
+            border-radius: 16px;
+            transition: all 0.3s ease;
+        }
+
+        #drop-zone:hover,
+        #drop-zone.dragover {
+            border-color: #F26522;
+            background-color: rgba(242, 101, 34, 0.08);
+            transform: scale(1.01);
+            box-shadow: 0 0 20px rgba(242, 101, 34, 0.1);
+        }
+
+        #loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(4px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            display: none;
+        }
+
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-top: 4px solid #f26321;
+            border-radius: 50%;
+            width: 48px;
+            height: 48px;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+    </style>
+</head>
+
+<body class="bg-background-dark font-display">
+    <div id="loading-overlay">
+        <div class="text-center">
+            <div class="spinner mb-4 mx-auto"></div>
+            <p class="text-lg font-semibold text-slate-300">Finding Locations...</p>
+        </div>
+    </div>
+
+    <!-- Compact Dark Header -->
+    <div class="w-full border-b border-white/5 bg-[#0f172a] shadow-lg">
+        <div class="container mx-auto px-6 py-4 flex items-center justify-between max-w-7xl">
+            <div class="flex items-center gap-3">
+                <div
+                    class="size-10 rounded-lg bg-gradient-to-br from-secondary to-primary flex items-center justify-center shadow-lg">
+                    <span class="material-symbols-outlined text-white" style="font-size: 24px;">map</span>
+                </div>
+                <div>
+                    <h1 class="text-white text-lg font-bold leading-tight">HipMaps Pinpointer</h1>
+                    <p class="text-slate-400 text-xs font-medium tracking-wide">INTERNAL TOOL V3.0</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="text-xs text-slate-500 hidden md:inline">Precision geocoding for artistic maps</span>
+                <div
+                    class="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-orange-400 flex items-center justify-center text-xs font-bold text-white shadow-md">
+                    JY</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container mx-auto p-6 max-w-7xl">
+
+        <div class="flex flex-col md:flex-row gap-8 transition-all duration-500 ease-in-out" id="main-layout">
+            <!-- Control Panel -->
+            <div id="control-panel"
+                class="w-full max-w-xl mx-auto glass-card p-6 space-y-6 h-fit transition-all duration-500 ease-in-out shadow-glass">
+                <div id="setup-panel">
+                    <div>
+                        <div class="flex items-center gap-3 mb-3">
+                            <div
+                                class="bg-[#F26522] text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm shadow-sm">
+                                1</div>
+                            <h2 class="text-xl font-bold text-white">Upload Data</h2>
+                        </div>
+                        <p class="text-sm text-slate-400 mb-4 ml-11">Upload your CSV file. Requires 'Name of location'.
+                        </p>
+
+                        <div id="drop-zone"
+                            class="w-full h-48 flex flex-col items-center justify-center text-slate-400 cursor-pointer group">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                                stroke="currentColor"
+                                class="w-12 h-12 mb-3 text-slate-500 group-hover:text-[#F26522] transition-colors animate-bounce-gentle">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+                            </svg>
+                            <p class="font-medium text-slate-300 group-hover:text-[#F26522] transition-colors">Drag &
+                                Drop
+                                CSV or Project File</p>
+                            <p class="text-xs mt-1 text-slate-500">or click to browse</p>
+                            <input type="file" id="csv-file-input" accept=".csv, .json" class="hidden">
+                            <p id="file-name-display"
+                                class="text-sm text-[#F26522] mt-3 font-medium hidden bg-orange-500/10 px-3 py-1 rounded-full">
+                            </p>
+                        </div>
+
+                        <!-- Search Focus Input -->
+                        <div class="mt-4">
+                            <label for="search-focus" class="block text-sm font-medium text-slate-300 mb-1">Search Focus
+                                (Optional)</label>
+                            <input type="text" id="search-focus" placeholder="e.g. Sonoma, CA"
+                                class="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all text-sm text-white placeholder-slate-500">
+                            <p class="text-xs text-slate-500 mt-1">Helps find common places (e.g. "Starbucks") in a
+                                specific
+                                area.</p>
+                        </div>
+
+                        <!-- Manual Entry Section -->
+                        <div class="relative flex py-5 items-center">
+                            <div class="flex-grow border-t border-white/10"></div>
+                            <span class="flex-shrink-0 mx-4 text-slate-500 text-xs uppercase font-semibold">OR Manually
+                                Enter</span>
+                            <div class="flex-grow border-t border-white/10"></div>
+                        </div>
+
+                        <div class="space-y-3">
+                            <div>
+                                <label for="manual-location-input"
+                                    class="block text-sm font-medium text-slate-300 mb-1">Enter Locations</label>
+                                <textarea id="manual-location-input" rows="4"
+                                    placeholder="Enter locations, one per line&#10;e.g.&#10;Eiffel Tower&#10;Louvre Museum"
+                                    class="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all text-sm text-white placeholder-slate-500"></textarea>
+                                <p class="text-xs text-slate-500 mt-1">Paste a list of locations (one per line).</p>
+                            </div>
+
+                        </div>
+
+                        <button id="select-file-btn" class="hidden">Select File</button>
+                        <!-- Hidden, triggered by dropzone click -->
+                    </div>
+
+                    <button id="process-button" class="w-full btn-primary text-lg mt-8">
+                        Find Locations
+                    </button>
+                </div>
+
+                <hr class="my-4 border-white/5">
+
+                <div id="verify-section" class="hidden pt-4 border-t border-white/5">
+                    <div class="flex justify-between items-center mb-4">
+                        <div class="flex items-center gap-3">
+                            <div
+                                class="bg-[#F26522] text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm shadow-sm">
+                                2</div>
+                            <h2 class="text-xl font-bold text-white">Verify</h2>
+                        </div>
+                        <div class="flex gap-2">
+                            <button id="reset-view-btn"
+                                class="text-xs bg-white/10 hover:bg-white/15 px-3 py-1.5 rounded-full text-slate-300 font-medium hidden transition-colors border border-white/10">
+                                RESET
+                            </button>
+                            <button id="start-over-btn"
+                                class="text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 px-3 py-1.5 rounded-full font-medium hidden transition-colors border border-red-500/20">
+                                Start Over
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Map Overlay Controls -->
+                    <div class="bg-white/5 rounded-xl p-4 mb-4 border border-white/10">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-sm font-bold text-slate-300 flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round" class="text-[#F26522]">
+                                    <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                                    <polyline points="2 17 12 22 22 17"></polyline>
+                                    <polyline points="2 12 12 17 22 12"></polyline>
+                                </svg>
+                                Map Overlay
+                            </h3>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="toggle-overlay" class="sr-only peer">
+                                <div
+                                    class="w-9 h-5 bg-slate-600 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[#F26522] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#F26522]">
+                                </div>
+                            </label>
+                        </div>
+
+                        <div id="overlay-settings"
+                            class="space-y-3 transition-all duration-300 opacity-50 pointer-events-none">
+                            <div>
+                                <div class="flex justify-between text-xs text-slate-500 mb-1">
+                                    <span>Opacity</span>
+                                    <span id="opacity-value">80%</span>
+                                </div>
+                                <input type="range" id="overlay-opacity" min="0" max="100" value="80"
+                                    class="w-full h-2 bg-slate-600 rounded-lg appearance-none cursor-pointer accent-[#F26522]">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="locations-list" class="space-y-2 max-h-[400px] overflow-y-auto pr-1 custom-scrollbar">
+                        <p class="text-xs text-slate-500 italic text-center py-4">Locations will appear here.</p>
+                    </div>
+                </div>
+
+                <hr class="my-4 hidden border-white/5" id="export-hr">
+
+                <div id="export-section" class="hidden">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div
+                            class="bg-[#F26522] text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm shadow-sm">
+                            3</div>
+                        <h2 class="text-xl font-bold text-white">Export & Save</h2>
+                    </div>
+                    <div class="flex gap-3">
+                        <button id="download-csv-button" class="flex-1 btn-success">
+                            Download CSV
+                        </button>
+                        <button id="save-project-button"
+                            class="flex-1 bg-slate-600 text-white font-bold py-2 px-4 rounded-xl hover:bg-slate-500 transition-colors shadow-md">
+                            Save Project
+                        </button>
+                    </div>
+                    <div class="mt-3">
+                        <button id="download-geojson-button"
+                            class="w-full bg-teal-600 text-white font-bold py-2 px-4 rounded-xl hover:bg-teal-500 transition-colors shadow-md">
+                            Export GeoJSON
+                        </button>
+                    </div>
+
+                    <!-- ── Georef Bounds (collapsible) ── -->
+                    <details class="bg-white/5 rounded-xl p-3 mb-3 border border-white/10 mt-4">
+                        <summary class="text-xs font-bold text-slate-300 cursor-pointer select-none">📐 Georef Bounds</summary>
+                        <div id="ref-image-info" class="mt-2 text-xs">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-slate-400">Points:</span>
+                                <span id="ref-point-count" class="font-bold text-primary">0 / 0</span>
+                            </div>
+                            <details class="mb-2">
+                                <summary class="cursor-pointer text-[#F26522] hover:underline text-[10px] font-medium">⚙️ Select points</summary>
+                                <div id="bounds-point-list" class="mt-2 max-h-32 overflow-y-auto space-y-1 bg-white/5 rounded-lg p-2 border border-white/10 custom-scrollbar"></div>
+                                <div class="flex gap-2 mt-2">
+                                    <button type="button" onclick="selectAllBoundsPoints(true)" class="text-[10px] px-2 py-1 bg-white/10 text-slate-300 rounded hover:bg-white/15">All</button>
+                                    <button type="button" onclick="selectAllBoundsPoints(false)" class="text-[10px] px-2 py-1 bg-white/10 text-slate-300 rounded hover:bg-white/15">None</button>
+                                    <button type="button" onclick="autoExcludeOutliers()" class="text-[10px] px-2 py-1 bg-orange-500/15 text-orange-400 rounded hover:bg-orange-500/25">Auto-exclude</button>
+                                </div>
+                            </details>
+                            <div class="font-mono text-slate-300 text-[10px] mb-1 pt-1 border-t border-white/10">
+                                <div>N: <span id="ref-north">--</span>° | S: <span id="ref-south">--</span>°</div>
+                                <div>E: <span id="ref-east">--</span>° | W: <span id="ref-west">--</span>°</div>
+                            </div>
+                            <div class="flex justify-between items-center"><span class="text-slate-400">Aspect:</span><span id="ref-aspect" class="font-bold text-[#F26522]">--</span></div>
+                            <div class="flex justify-between items-center mt-0.5"><span class="text-slate-400">Size:</span><span id="ref-size" class="font-mono text-slate-300">-- × --</span></div>
+                            <div id="bounds-warning" class="hidden mt-2 p-2 bg-yellow-500/10 border border-yellow-500/20 rounded text-yellow-300 text-[10px]">⚠️ Large spread. Exclude outliers.</div>
+                        </div>
+                    </details>
+
+                    <!-- ── Capture & Send to Studio ── -->
+                    <button id="generate-ref-image"
+                        class="w-full bg-gradient-to-r from-secondary to-[#4a4dc7] text-white font-bold py-2.5 px-4 rounded-xl hover:from-[#242775] hover:to-[#3a3db7] transition-all shadow-md flex items-center justify-center gap-2 text-sm">
+                        📸 Capture This View
+                    </button>
+
+                    <div id="capture-preview" class="hidden mt-3">
+                        <div class="relative rounded-xl overflow-hidden border border-white/10">
+                            <img id="capture-preview-img" class="w-full" alt="Captured map" src="data:,">
+                            <div class="absolute top-2 right-2 bg-green-500/80 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">✓ Georeferenced</div>
+                        </div>
+                        <button id="open-in-studio-btn"
+                            class="w-full mt-2 py-2.5 bg-gradient-to-r from-purple-600 to-[#F26522] text-white font-bold text-sm rounded-xl hover:from-purple-700 hover:to-[#d9531e] transition-all shadow-lg flex items-center justify-center gap-2">
+                            🎨 Open in Studio
+                        </button>
+                        <p id="capture-info" class="text-[10px] text-slate-500 mt-1.5"></p>
+                    </div>
+
+                    <p class="text-[10px] text-slate-500 mt-2 italic">💡 Frame the map, then capture. Open in Studio for artistic filters, text/logo overlays, and AI tracing.</p>
+
+                </div>
+            </div>
+            <!-- Map and Output -->
+            <div id="map-column" class="md:w-2/3 flex flex-col gap-6 hidden">
+                <div class="glass-card p-2 h-[80vh]" style="position: relative;">
+                    <div id="map" class="w-full h-full rounded-xl"></div>
+                </div>
+                <div class="glass-card p-4">
+                    <details>
+                        <summary class="text-sm font-bold text-slate-300 mb-3 cursor-pointer select-none">Data Preview
+                            (JSON)</summary>
+                        <pre id="coordinates-output"
+                            class="bg-black/30 text-slate-400 text-xs rounded-xl p-4 h-32 overflow-auto font-mono"></pre>
+                    </details>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let map;
+        let selectedFile = null;
+        let markers = []; // Stores {marker, infoWindow, locationId}
+        let locationsData = []; // Stores the final aggregated data
+        let activeInfoWindow = null;
+        let initialBounds = null;
+        let tileOverlay = null;
+
+        async function initMap() {
+            const defaultCenter = { lat: 39.8283, lng: -98.5795 }; // Center of USA
+            const { Map } = await google.maps.importLibrary("maps");
+
+            map = new Map(document.getElementById("map"), {
+                center: defaultCenter,
+                zoom: 4,
+                mapId: '655a16910df2ba15ec691449',
+                mapTypeControl: true,
+                streetViewControl: false,
+                mapTypeId: 'roadmap' // Changed to roadmap as requested
+            });
+
+            // --- Overlay Init ---
+            document.getElementById('toggle-overlay').addEventListener('change', toggleOverlay);
+            document.getElementById('overlay-opacity').addEventListener('input', updateOverlayOpacity);
+
+            // Pre-load the tile overlay object but don't add to map yet
+            loadTiles();
+
+            document.getElementById('process-button').addEventListener('click', processLocations);
+            // Listener moved to setupFileUpload to avoid duplicates
+            // document.getElementById('csv-file-input').addEventListener('change', handleFile); 
+            document.getElementById('download-csv-button').addEventListener('click', downloadCSV);
+            document.getElementById('download-geojson-button').addEventListener('click', downloadGeoJSON);
+            document.getElementById('save-project-button').addEventListener('click', saveProject);
+            document.getElementById('start-over-btn').addEventListener('click', () => location.reload());
+            setupFileUpload();
+        }
+
+        function loadTiles() {
+            // Default assumes local tiles folder
+            const urlPattern = "tiles/{z}/{x}/{y}.png";
+            const opacityVal = document.getElementById('overlay-opacity').value / 100;
+
+            try {
+                tileOverlay = new google.maps.ImageMapType({
+                    getTileUrl: function (coord, zoom) {
+                        return urlPattern
+                            .replace('{z}', zoom)
+                            .replace('{x}', coord.x)
+                            .replace('{y}', coord.y);
+                    },
+                    tileSize: new google.maps.Size(256, 256),
+                    opacity: opacityVal,
+                    name: 'HipMaps Tiles'
+                });
+                // We do NOT push to map.overlayMapTypes yet. Wait for toggle.
+            } catch (e) {
+                console.error("Error creating tile overlay:", e);
+            }
+        }
+
+        function toggleOverlay(e) {
+            const isChecked = e.target.checked;
+            const settingsDiv = document.getElementById('overlay-settings');
+
+            if (isChecked) {
+                if (!tileOverlay) loadTiles();
+                map.overlayMapTypes.push(tileOverlay);
+                settingsDiv.classList.remove('opacity-50', 'pointer-events-none');
+            } else {
+                map.overlayMapTypes.clear();
+                settingsDiv.classList.add('opacity-50', 'pointer-events-none');
+            }
+        }
+
+        function updateOverlayOpacity(e) {
+            const val = e.target.value;
+            document.getElementById('opacity-value').textContent = val + '%';
+            if (tileOverlay) {
+                tileOverlay.setOpacity(val / 100);
+            }
+        }
+
+        function setupFileUpload() {
+            const dropZone = document.getElementById('drop-zone');
+            const fileInput = document.getElementById('csv-file-input');
+            const fileNameDisplay = document.getElementById('file-name-display');
+
+            dropZone.addEventListener('click', () => fileInput.click());
+
+            dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+            dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); dropZone.classList.remove('dragover'); });
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault(); dropZone.classList.remove('dragover');
+                if (e.dataTransfer.files.length) {
+                    handleFile({ target: { files: e.dataTransfer.files } });
+                }
+            });
+
+            fileInput.addEventListener('change', handleFile);
+        }
+
+        function handleFile(e) {
+            const files = e.target.files;
+            if (files && files.length > 0) {
+                selectedFile = files[0];
+                updateFileDisplay();
+            }
+        }
+
+        function updateFileDisplay() {
+            const display = document.getElementById('file-name-display');
+            if (selectedFile) {
+                display.textContent = selectedFile.name;
+                display.classList.remove('hidden');
+
+                // Auto-process if it's a JSON file (Project Save)
+                if (selectedFile.name.toLowerCase().endsWith('.json')) {
+                    loadProject(selectedFile);
+                }
+            } else {
+                display.classList.add('hidden');
+            }
+        }
+
+        async function loadProject(file) {
+            document.getElementById('loading-overlay').style.display = 'flex'; // Show loading
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const projectData = JSON.parse(e.target.result);
+                    if (!projectData.locations || !Array.isArray(projectData.locations)) {
+                        throw new Error("Invalid project file.");
+                    }
+
+                    // Restore Data
+                    locationsData = projectData.locations;
+
+                    // Reset UI
+                    markers.forEach(m => { if (m.marker.map) m.marker.map = null; });
+                    markers = [];
+                    document.getElementById('locations-list').innerHTML = '';
+                    if (activeInfoWindow) activeInfoWindow.close();
+
+                    // Show Map Section
+                    const controlPanel = document.getElementById('control-panel');
+                    controlPanel.classList.remove('w-full', 'max-w-xl', 'mx-auto');
+                    controlPanel.classList.add('md:w-1/3');
+                    document.getElementById('map-column').classList.remove('hidden');
+                    document.getElementById('verify-section').classList.remove('hidden');
+                    document.getElementById('export-section').classList.remove('hidden');
+                    document.getElementById('export-hr').classList.remove('hidden');
+                    document.getElementById('setup-panel').classList.add('hidden');
+                    document.getElementById('start-over-btn').classList.remove('hidden');
+
+                    // Update reference image info with bounds
+                    if (typeof updateRefImageInfo === 'function') updateRefImageInfo();
+
+
+                    // Re-create Markers
+                    const { AdvancedMarkerElement } = await google.maps.importLibrary("marker");
+                    const { InfoWindow } = await google.maps.importLibrary("maps");
+                    let bounds = new google.maps.LatLngBounds();
+
+                    locationsData.forEach(loc => {
+                        if (loc.lat && loc.lng) {
+                            // Re-construct a mock "place" object for createMarker
+                            const mockPlace = {
+                                location: { lat: () => loc.lat, lng: () => loc.lng },
+                                displayName: loc.officialName,
+                                googleMapsURI: loc.mapsLink
+                            };
+                            // We need to pass the original CSV data structure expected by createMarker
+                            const mockOriginalLoc = {
+                                id: loc.id,
+                                csvName: loc.inputName,
+                                csvDescription: loc.description
+                            };
+
+                            createMarker(mockPlace, mockOriginalLoc, AdvancedMarkerElement, InfoWindow);
+                            bounds.extend({ lat: loc.lat, lng: loc.lng });
+                        } else {
+                            addToList(`${loc.inputName} (Not Found)`, loc.id, null);
+                        }
+                    });
+
+                    updateCoordinatesDisplay();
+
+                    if (!bounds.isEmpty()) {
+                        initialBounds = bounds;
+                        map.fitBounds(bounds);
+                        document.getElementById('reset-view-btn').classList.remove('hidden');
+                    }
+                    document.getElementById('loading-overlay').style.display = 'none'; // Hide loading
+
+                } catch (error) {
+                    document.getElementById('loading-overlay').style.display = 'none'; // Hide loading
+                    showModal("Error loading project: " + error.message);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function saveProject() {
+            if (!locationsData || locationsData.length === 0) {
+                showModal("No data to save.");
+                return;
+            }
+            const dataStr = JSON.stringify({ locations: locationsData }, null, 2);
+            const blob = new Blob([dataStr], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "hipmaps_project.json";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
+        function transitionToMapView() {
+            const controlPanel = document.getElementById('control-panel');
+            controlPanel.classList.remove('w-full', 'max-w-xl', 'mx-auto');
+            controlPanel.classList.add('md:w-1/3');
+
+            document.getElementById('map-column').classList.remove('hidden');
+            document.getElementById('verify-section').classList.remove('hidden');
+            document.getElementById('export-section').classList.remove('hidden');
+            document.getElementById('export-hr').classList.remove('hidden');
+            document.getElementById('setup-panel').classList.add('hidden');
+            document.getElementById('start-over-btn').classList.remove('hidden');
+
+            // Update reference image info with bounds
+            if (typeof updateRefImageInfo === 'function') updateRefImageInfo();
+        }
+
+        async function addManualLocation() {
+            const input = document.getElementById('manual-location-input');
+            const rawText = input.value.trim();
+
+            if (!rawText) {
+                showModal("Please enter at least one location.");
+                return;
+            }
+
+            // Split by newline, filter empty
+            const locationNames = rawText.split(/\r?\n/).map(s => s.trim()).filter(s => s.length > 0);
+
+            if (locationNames.length === 0) {
+                showModal("Please enter valid location names.");
+                return;
+            }
+
+            document.getElementById('loading-overlay').style.display = 'flex';
+
+            try {
+                const { Place } = await google.maps.importLibrary("places");
+                const { AdvancedMarkerElement } = await google.maps.importLibrary("marker");
+                const { InfoWindow } = await google.maps.importLibrary("maps");
+
+                // Transition immediately so user sees results populating
+                if (document.getElementById('setup-panel').classList.contains('hidden') === false) {
+                    transitionToMapView();
+                    if (!initialBounds) initialBounds = new google.maps.LatLngBounds();
+                }
+
+                const searchFocus = document.getElementById('search-focus').value.trim();
+
+                for (const name of locationNames) {
+                    let query = name;
+                    if (searchFocus) query += ` ${searchFocus}`;
+
+                    const request = { textQuery: query, fields: ["displayName", "location", "googleMapsURI", "websiteURI"] };
+
+                    try {
+                        const { places } = await Place.searchByText(request);
+
+                        // Create a mock CSV object
+                        const newId = locationsData.length > 0 ? Math.max(...locationsData.map(l => l.id)) + 1 : 0;
+                        const mockCsvData = {
+                            id: newId,
+                            csvName: name,
+                            csvDescription: '', // No description for manual bulk entry
+                            csvUrl: null
+                        };
+
+                        if (places && places.length > 0) {
+                            const place = places[0];
+
+                            // Ensure we have the websiteURI
+                            if (!place.websiteURI) {
+                                try {
+                                    await place.fetchFields({ fields: ['websiteURI'] });
+                                } catch (e) {
+                                    console.log("Could not fetch websiteURI", e);
+                                }
+                            }
+
+                            createMarker(place, mockCsvData, AdvancedMarkerElement, InfoWindow);
+
+                            // Always extend bounds
+                            if (!initialBounds) initialBounds = new google.maps.LatLngBounds();
+                            initialBounds.extend(place.location);
+
+                            // If it's the first location or bounds are tight, just center
+                            if (locationsData.length === 1) {
+                                map.setCenter(place.location);
+                                map.setZoom(15);
+                            } else {
+                                map.fitBounds(initialBounds);
+                            }
+
+                            // Always show the reset button if we have locations
+                            const btn = document.getElementById('reset-view-btn');
+                            if (btn) btn.classList.remove('hidden');
+
+                        } else {
+                            // Handle Not Found
+                            addToList(`${name} (Not Found)`, newId, null);
+                            locationsData.push({ id: newId, inputName: name, description: '', lat: null, lng: null, officialName: `Not Found: ${name}`, mapsLink: null });
+                            updateCoordinatesDisplay();
+                        }
+
+                    } catch (err) {
+                        console.error(`Error searching for ${name}:`, err);
+                        // Handle Error
+                        const newId = locationsData.length > 0 ? Math.max(...locationsData.map(l => l.id)) + 1 : 0;
+                        addToList(`${name} (Error)`, newId, null);
+                        locationsData.push({ id: newId, inputName: name, description: '', lat: null, lng: null, officialName: `Error: ${name}`, mapsLink: null });
+                        updateCoordinatesDisplay();
+                    }
+                }
+
+                // Clear input after processing
+                input.value = '';
+
+                // NOW update ref image info since locations are populated
+                if (typeof updateRefImageInfo === 'function') updateRefImageInfo();
+
+            } catch (error) {
+                showModal("Error initializing map components: " + error.message);
+            } finally {
+                document.getElementById('loading-overlay').style.display = 'none';
+            }
+        }
+
+        async function processLocations() {
+            const manualInput = document.getElementById('manual-location-input').value.trim();
+
+            if (selectedFile) {
+                if (!selectedFile.name.toLowerCase().endsWith('.csv')) {
+                    showModal('Please upload a CSV file for processing. To load a project, select the JSON file directly.');
+                    return;
+                }
+
+                markers.forEach(m => { if (m.marker.map) m.marker.map = null; });
+                markers = []; locationsData = [];
+                document.getElementById('locations-list').innerHTML = '<p class="text-xs text-gray-400 italic">Processing...</p>';
+                if (activeInfoWindow) activeInfoWindow.close();
+                updateCoordinatesDisplay();
+
+                document.getElementById('loading-overlay').style.display = 'flex'; // Show loading
+
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    const csvInput = e.target.result;
+                    let locationsToProcess = null;
+
+                    try {
+                        const lines = csvInput.split('\n');
+                        if (lines.length < 2) throw new Error("CSV text needs at least a header row and one data row.");
+
+                        const headers = lines[0].split(',').map(h => String(h).trim().toLowerCase());
+
+                        const findIndex = (terms) => headers.findIndex(h => terms.some(term => h.includes(term)));
+                        const nameColIndex = findIndex(['name of location', 'location name', 'place']);
+                        const descColIndex = findIndex(['short description', 'description', 'notes']);
+                        const urlColIndex = findIndex(['url', 'link', 'website', 'maps link']);
+                        const typeColIndex = findIndex(['type', 'category', 'kind']);
+
+                        if (nameColIndex === -1) {
+                            throw new Error('CSV text must contain a header like "Name of location".');
+                        }
+
+                        locationsToProcess = lines.slice(1).map((line, index) => {
+                            const values = line.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g)?.map(v => v.trim().replace(/^"|"$/g, '')) || [];
+                            return {
+                                id: index,
+                                csvName: values[nameColIndex] || null,
+                                csvDescription: (descColIndex !== -1 && values[descColIndex]) ? values[descColIndex] : '', // Optional description
+                                csvUrl: (urlColIndex !== -1 && values[urlColIndex]) ? values[urlColIndex] : null, // Optional URL
+                                csvType: (typeColIndex !== -1 && values[typeColIndex]) ? values[typeColIndex] : '' // Optional Type
+                            };
+                        }).filter(loc => loc.csvName);
+                    } catch (error) {
+                        document.getElementById('loading-overlay').style.display = 'none';
+                        showModal(`Error parsing CSV: ${error.message}`);
+                        document.getElementById('locations-list').innerHTML = '<p class="text-xs text-red-500 italic">Error parsing data.</p>';
+                        return;
+                    }
+
+                    if (!locationsToProcess || locationsToProcess.length === 0) {
+                        document.getElementById('loading-overlay').style.display = 'none';
+                        showModal('No valid location rows found in the provided data.');
+                        document.getElementById('locations-list').innerHTML = '<p class="text-xs text-red-500 italic">No valid locations found.</p>';
+                        return;
+                    }
+
+                    document.getElementById('locations-list').innerHTML = '';
+
+                    // Layout Transition: Move Control Panel to side, Show Map
+                    transitionToMapView();
+
+                    const { Place } = await google.maps.importLibrary("places");
+                    const { AdvancedMarkerElement } = await google.maps.importLibrary("marker");
+                    const { InfoWindow } = await google.maps.importLibrary("maps");
+                    let bounds = new google.maps.LatLngBounds();
+
+                    const searchFocus = document.getElementById('search-focus').value.trim();
+
+                    for (const loc of locationsToProcess) {
+                        let query = loc.csvName;
+                        if (searchFocus) {
+                            query += ` ${searchFocus}`;
+                        }
+                        const request = { textQuery: query, fields: ["displayName", "location", "googleMapsURI", "websiteURI"] };
+                        try {
+                            const { places } = await Place.searchByText(request);
+                            if (places && places.length > 0) {
+                                const place = places[0];
+                                if (!place.websiteURI) {
+                                    try { await place.fetchFields({ fields: ['websiteURI'] }); } catch (e) { }
+                                }
+                                createMarker(place, loc, AdvancedMarkerElement, InfoWindow);
+                                bounds.extend(place.location);
+                            } else {
+                                addToList(`${loc.csvName} (Not Found)`, loc.id, null);
+                                locationsData.push({ id: loc.id, inputName: loc.csvName, description: loc.csvDescription, type: loc.csvType, lat: null, lng: null, officialName: `Not Found: ${loc.csvName}`, mapsLink: loc.csvUrl || null });
+                                updateCoordinatesDisplay();
+                            }
+                        } catch (error) {
+                            console.error(`Error searching for "${loc.csvName}":`, error);
+                            addToList(`${loc.csvName} (Error)`, loc.id, null);
+                            locationsData.push({ id: loc.id, inputName: loc.csvName, description: loc.csvDescription, type: loc.csvType, lat: null, lng: null, officialName: `Error Finding: ${loc.csvName}`, mapsLink: loc.csvUrl || null });
+                            updateCoordinatesDisplay();
+                        }
+                    }
+                    if (!bounds.isEmpty()) {
+                        map.fitBounds(bounds);
+                        initialBounds = bounds;
+                        document.getElementById('reset-view-btn').classList.remove('hidden');
+                    } else if (locationsToProcess.length === 1 && locationsData[0]?.lat) {
+                        map.setCenter({ lat: locationsData[0].lat, lng: locationsData[0].lng }); map.setZoom(15);
+                    }
+                    // Sort locations: Not Found/Error first
+                    locationsData.sort((a, b) => {
+                        const aStatus = (a.lat === null) ? 0 : 1;
+                        const bStatus = (b.lat === null) ? 0 : 1;
+                        return aStatus - bStatus;
+                    });
+
+                    // Re-render list based on sorted data
+                    document.getElementById('locations-list').innerHTML = '';
+                    locationsData.forEach(loc => {
+                        const markerEntry = markers.find(m => m.locationId === loc.id);
+                        addToList(loc.inputName, loc.id, markerEntry ? markerEntry.marker : null);
+                    });
+
+                    document.getElementById('loading-overlay').style.display = 'none'; // Hide loading
+
+                    // Update ref image info now that all locations are processed
+                    if (typeof updateRefImageInfo === 'function') updateRefImageInfo();
+                };
+                reader.readAsText(selectedFile);
+            } else if (manualInput) {
+                await addManualLocation();
+            } else {
+                showModal('Please upload a CSV file or enter locations manually.');
+            }
+        }
+
+        function createMarker(place, csvData, AdvancedMarkerElement, InfoWindow) {
+            const marker = new AdvancedMarkerElement({ map, position: place.location, title: csvData.csvName, gmpDraggable: true });
+
+            const locationEntry = {
+                id: csvData.id,
+                inputName: csvData.csvName,
+                officialName: place.displayName,
+                description: csvData.csvDescription,
+                type: csvData.csvType || '',
+                lat: place.location.lat(),
+                lng: place.location.lng(),
+                mapsLink: csvData.csvUrl || place.googleMapsURI || null,
+                website: place.websiteURI || null
+            };
+            locationsData.push(locationEntry);
+
+            const infoWindow = new InfoWindow({ content: buildInfoWindowContent(locationEntry) });
+
+            marker.addListener('gmp-click', () => {
+                if (activeInfoWindow) activeInfoWindow.close();
+                infoWindow.setContent(buildInfoWindowContent(locationEntry)); // Refresh content on click
+                infoWindow.open({ anchor: marker, map });
+                activeInfoWindow = infoWindow;
+                highlightListItem(csvData.id);
+
+                // Zoom in on click
+                map.panTo(marker.position);
+                map.setZoom(20);
+                map.setMapTypeId('hybrid');
+            });
+
+            // When info window is closed, zoom back to overview
+            infoWindow.addListener('closeclick', () => {
+                activeInfoWindow = null;
+                if (initialBounds) {
+                    map.fitBounds(initialBounds);
+                    map.setMapTypeId('roadmap');
+                    if (locationsData.length === 1) map.setZoom(15);
+                }
+                // Remove active highlight from list
+                document.querySelectorAll('.location-item').forEach(item => {
+                    item.classList.remove('active');
+                });
+            });
+
+            marker.addListener('dragend', (event) => {
+                const newPosition = marker.position;
+                if (locationEntry) {
+                    locationEntry.lat = newPosition.lat;
+                    locationEntry.lng = newPosition.lng;
+                    updateCoordinatesDisplay();
+                    console.log(`Updated ${locationEntry.inputName} coordinates`);
+                }
+            });
+
+            markers.push({ marker, infoWindow, locationId: csvData.id });
+            addToList(csvData.csvName, csvData.id, marker);
+            updateCoordinatesDisplay();
+        }
+
+        // --- Build Info Window with Edit/Save Functionality ---
+        function buildInfoWindowContent(locationEntry) {
+            // Removed "Get Directions" link as requested
+            return `
+                <div class="info-window-content" id="iw-content-${locationEntry.id}">
+                    <h3>${locationEntry.officialName}</h3>
+                    ${locationEntry.type ? `<span class="inline-block bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded-full mb-2 border border-gray-200">${locationEntry.type}</span>` : ''}
+                    <p id="iw-desc-${locationEntry.id}">"${locationEntry.description}"</p>
+                    ${locationEntry.mapsLink ? `<a href="${locationEntry.mapsLink}" target="_blank" class="text-xs text-blue-500 hover:underline block mb-1 break-all">View on Google Maps</a>` : ''}
+                    ${locationEntry.website ? `<a href="${locationEntry.website}" target="_blank" class="text-xs text-green-600 hover:underline block mb-2 break-all">${locationEntry.website}</a>` : ''}
+                    <div class="mt-2 text-right">
+                        <button class="iw-button" onclick="makeEditable(${locationEntry.id})">Edit</button>
+                    </div>
+                </div>`;
+        }
+
+        function makeEditable(locationId) {
+            const descriptionP = document.getElementById(`iw-desc-${locationId}`);
+            const locationEntry = locationsData.find(loc => loc.id === locationId);
+            if (!descriptionP || !locationEntry) return;
+
+            const currentText = locationEntry.description;
+            const contentDiv = document.getElementById(`iw-content-${locationId}`);
+
+            const textarea = document.createElement('textarea');
+            textarea.id = `iw-edit-area-${locationId}`;
+            textarea.rows = 4;
+            textarea.value = currentText;
+
+            const saveButton = document.createElement('button');
+            saveButton.className = 'iw-button';
+            saveButton.textContent = 'Save';
+            saveButton.onclick = () => saveEdit(locationId);
+
+            contentDiv.replaceChild(textarea, descriptionP);
+            contentDiv.querySelector('.iw-button').replaceWith(saveButton); // Replace Edit with Save
+        }
+
+        function saveEdit(locationId) {
+            const textarea = document.getElementById(`iw-edit-area-${locationId}`);
+            const locationEntry = locationsData.find(loc => loc.id === locationId);
+            if (!textarea || !locationEntry) return;
+
+            locationEntry.description = textarea.value; // Update the data store
+            updateCoordinatesDisplay(); // Update the main JSON preview
+
+            // Update the list item description preview
+            const listDesc = document.getElementById(`list-desc-${locationId}`);
+            if (listDesc) {
+                listDesc.textContent = locationEntry.description;
+            }
+
+            // Rebuild the info window content to its non-editable state
+            const markerEntry = markers.find(m => m.locationId === locationId);
+            if (markerEntry && activeInfoWindow === markerEntry.infoWindow) {
+                markerEntry.infoWindow.setContent(buildInfoWindowContent(locationEntry));
+            }
+        }
+
+        function openInEditMode(locationId) {
+            const markerEntry = markers.find(m => m.locationId === locationId);
+            if (markerEntry) {
+                map.panTo(markerEntry.marker.position);
+                map.setZoom(17);
+                if (activeInfoWindow) activeInfoWindow.close();
+                markerEntry.infoWindow.setContent(buildInfoWindowContent(locationsData.find(loc => loc.id === locationId)));
+                markerEntry.infoWindow.open({ anchor: markerEntry.marker, map });
+                activeInfoWindow = markerEntry.infoWindow;
+
+                // Trigger edit mode immediately
+                makeEditable(locationId);
+                highlightListItem(locationId);
+            }
+        }
+
+        function addToList(name, index, marker) {
+            const list = document.getElementById('locations-list');
+            const item = document.createElement('div');
+            item.id = `loc-item-${index}`;
+
+            const isError = !marker;
+            const baseClass = 'location-item p-2.5 rounded-xl flex justify-between items-center border-l-4 border-transparent transition-all';
+            item.className = isError ? baseClass + ' error' : baseClass;
+
+            const statusSpan = marker
+                ? '<span class="text-emerald-400 font-bold text-xs">FOUND</span>'
+                : '<span class="text-red-400 font-bold text-xs">NEEDS ATTENTION</span>';
+
+            item.innerHTML = `
+                <div class="flex-grow cursor-pointer" onclick="panToLocation(${index})">
+                    <span class="font-medium text-slate-200">${name}</span>
+                    <div id="list-desc-${index}" class="text-xs text-slate-500 truncate w-48">${locationsData.find(l => l.id === index)?.description || ''}</div>
+                </div>
+                <div class="flex items-center gap-2">
+                    ${statusSpan}
+                    ${marker ? `<button onclick="openInEditMode(${index})" class="p-1 hover:bg-white/10 rounded text-slate-400" title="Edit Description">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+                        </svg>
+                    </button>` : ''}
+                </div>`;
+
+            list.appendChild(item);
+        }
+
+        document.getElementById('reset-view-btn').addEventListener('click', () => {
+            if (initialBounds) {
+                map.fitBounds(initialBounds);
+                map.setMapTypeId('roadmap'); // Switch back to roadmap for overview
+                // If only one location, avoid zooming in too much
+                if (locationsData.length === 1) {
+                    map.setZoom(15);
+                }
+            }
+        });
+
+        // ... (existing code) ...
+
+        function panToLocation(index) {
+            const markerEntry = markers.find(m => m.locationId === index);
+            if (markerEntry) {
+                map.panTo(markerEntry.marker.position);
+                map.setZoom(20); // Zoom level 20 for precise adjustment
+                map.setMapTypeId('hybrid'); // Switch to Satellite (Hybrid)
+
+                if (activeInfoWindow) activeInfoWindow.close();
+                markerEntry.infoWindow.setContent(buildInfoWindowContent(locationsData.find(loc => loc.id === index)));
+                markerEntry.infoWindow.open({ anchor: markerEntry.marker, map });
+                activeInfoWindow = markerEntry.infoWindow;
+                highlightListItem(index);
+            }
+        }
+
+        function highlightListItem(id) {
+            // Remove active class from all
+            document.querySelectorAll('.location-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            // Add to specific one
+            const item = document.getElementById(`loc-item-${id}`);
+            if (item) {
+                item.classList.add('active');
+                item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }
+
+        function updateCoordinatesDisplay() {
+            const outputData = locationsData.map(({ id, inputName, officialName, description, type, lat, lng, mapsLink, website }) => ({ id, inputName, officialName, description, type, lat, lng, mapsLink, website }));
+            document.getElementById('coordinates-output').textContent = JSON.stringify(outputData, null, 2);
+        }
+
+        function showModal(message) {
+            let modal = document.getElementById('info-modal');
+            if (!modal) {
+                modal = document.createElement('div'); modal.id = 'info-modal';
+                modal.style.cssText = 'position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(30, 41, 59, 0.95); backdrop-filter: blur(12px); padding: 16px 24px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 8px 32px rgba(0,0,0,0.4); z-index: 1000; color: #e2e8f0; max-width: 90%; text-align: center; font-size: 14px;';
+                const text = document.createElement('p'); text.id = 'modal-text';
+                modal.appendChild(text); document.body.appendChild(modal);
+            }
+            document.getElementById('modal-text').textContent = message;
+            modal.style.display = 'block';
+            setTimeout(() => { modal.style.display = 'none'; }, 4000);
+        }
+
+        document.getElementById('process-button').addEventListener('click', processLocations);
+
+        function downloadCSV() {
+            if (locationsData.length === 0) { showModal("No data to export."); return; }
+            let csvContent = "Name,Description,Website,Type,Longitude,Latitude\n";
+            locationsData.filter(loc => loc.lat !== null && loc.lng !== null).forEach(loc => {
+                const clean = (text) => text ? `"${String(text).replace(/"/g, '""')}"` : '';
+                csvContent += `${clean(loc.inputName)},${clean(loc.description)},${clean(loc.website || loc.mapsLink)},${clean(loc.type)},${Number(loc.lng).toFixed(6)},${Number(loc.lat).toFixed(6)}\n`;
+            });
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url); link.setAttribute("download", "hipmaps_coordinates_xy.csv");
+            link.style.visibility = 'hidden'; document.body.appendChild(link); link.click(); document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+        document.getElementById('download-csv-button').addEventListener('click', downloadCSV);
+
+        function downloadGeoJSON() {
+            if (locationsData.length === 0) { showModal("No data to export."); return; }
+
+            const features = locationsData
+                .filter(loc => loc.lat !== null && loc.lng !== null)
+                .map(loc => ({
+                    type: "Feature",
+                    geometry: {
+                        type: "Point",
+                        coordinates: [Number(loc.lng), Number(loc.lat)]
+                    },
+                    properties: {
+                        name: loc.inputName,
+                        official_name: loc.officialName,
+                        description: loc.description,
+                        website: loc.website || loc.mapsLink || "",
+                        type: loc.type || ""
+                    }
+                }));
+
+            const geoJson = {
+                type: "FeatureCollection",
+                features: features
+            };
+
+            const dataStr = JSON.stringify(geoJson, null, 2);
+            const blob = new Blob([dataStr], { type: "application/geo+json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "hipmaps_data.geojson";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+        document.getElementById('download-geojson-button').addEventListener('click', downloadGeoJSON);
+
+        // ============ REFERENCE IMAGE GENERATOR (WITH SELECTIVE BOUNDS) ============
+        let refImageAspectRatio = 1.33;
+        let boundsIncludedPoints = new Set(); // IDs of points included in bounds
+
+        // Calculate distance in km between two lat/lng points (Haversine)
+        function haversineDistance(lat1, lng1, lat2, lng2) {
+            const R = 6371; // Earth radius in km
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLng = (lng2 - lng1) * Math.PI / 180;
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLng / 2) * Math.sin(dLng / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
+        }
+
+        // Calculate centroid of all points
+        function getCentroid(points) {
+            if (points.length === 0) return { lat: 0, lng: 0 };
+            const sum = points.reduce((acc, p) => ({ lat: acc.lat + p.lat, lng: acc.lng + p.lng }), { lat: 0, lng: 0 });
+            return { lat: sum.lat / points.length, lng: sum.lng / points.length };
+        }
+
+        // Populate the bounds point selector
+        function populateBoundsPointList() {
+            const validPoints = locationsData.filter(l => l.lat && l.lng);
+            const listEl = document.getElementById('bounds-point-list');
+            if (!listEl || validPoints.length === 0) return;
+
+            // Initialize all points as included if first time
+            if (boundsIncludedPoints.size === 0) {
+                validPoints.forEach(p => boundsIncludedPoints.add(p.id));
+            }
+
+            // Calculate centroid and distances
+            const centroid = getCentroid(validPoints);
+            const distances = validPoints.map(p => ({
+                ...p,
+                distance: haversineDistance(centroid.lat, centroid.lng, p.lat, p.lng)
+            }));
+
+            // Find median distance for outlier detection
+            const sortedDist = [...distances].sort((a, b) => a.distance - b.distance);
+            const medianDist = sortedDist[Math.floor(sortedDist.length / 2)]?.distance || 0;
+            const outlierThreshold = Math.max(medianDist * 3, 5); // 3x median or 5km minimum
+
+            listEl.innerHTML = distances.map(p => {
+                const isOutlier = p.distance > outlierThreshold;
+                const isIncluded = boundsIncludedPoints.has(p.id);
+                const distLabel = p.distance < 1 ? `${(p.distance * 1000).toFixed(0)}m` : `${p.distance.toFixed(1)}km`;
+
+                return `
+                    <label class="flex items-center gap-2 text-[10px] p-1 rounded hover:bg-white/10 cursor-pointer ${isOutlier ? 'bg-orange-500/10' : ''}">
+                        <input type="checkbox" 
+                            ${isIncluded ? 'checked' : ''} 
+                            onchange="toggleBoundsPoint(${p.id})"
+                            class="w-3 h-3 accent-[#F26522]">
+                        <span class="flex-1 truncate ${isOutlier ? 'text-orange-400 font-medium' : 'text-slate-300'}">${p.inputName || p.officialName}</span>
+                        <span class="text-slate-500 ${isOutlier ? 'text-orange-400' : ''}">${distLabel}</span>
+                        ${isOutlier ? '<span class="text-orange-400" title="Potential outlier">⚠️</span>' : ''}
+                    </label>
+                `;
+            }).join('');
+
+            // Check for large spread
+            const maxDist = Math.max(...distances.map(d => d.distance));
+            const warningEl = document.getElementById('bounds-warning');
+            if (maxDist > 50 && warningEl) { // More than 50km spread
+                warningEl.classList.remove('hidden');
+            } else if (warningEl) {
+                warningEl.classList.add('hidden');
+            }
+        }
+
+        function toggleBoundsPoint(pointId) {
+            if (boundsIncludedPoints.has(pointId)) {
+                boundsIncludedPoints.delete(pointId);
+            } else {
+                boundsIncludedPoints.add(pointId);
+            }
+            updateRefImageInfo();
+        }
+
+        function selectAllBoundsPoints(selectAll) {
+            const validPoints = locationsData.filter(l => l.lat && l.lng);
+            boundsIncludedPoints.clear();
+            if (selectAll) {
+                validPoints.forEach(p => boundsIncludedPoints.add(p.id));
+            }
+            populateBoundsPointList();
+            updateRefImageInfo();
+        }
+
+        function autoExcludeOutliers() {
+            const validPoints = locationsData.filter(l => l.lat && l.lng);
+            const centroid = getCentroid(validPoints);
+            const distances = validPoints.map(p => ({
+                ...p,
+                distance: haversineDistance(centroid.lat, centroid.lng, p.lat, p.lng)
+            }));
+
+            const sortedDist = [...distances].sort((a, b) => a.distance - b.distance);
+            const medianDist = sortedDist[Math.floor(sortedDist.length / 2)]?.distance || 0;
+            const outlierThreshold = Math.max(medianDist * 3, 5);
+
+            boundsIncludedPoints.clear();
+            distances.forEach(p => {
+                if (p.distance <= outlierThreshold) {
+                    boundsIncludedPoints.add(p.id);
+                }
+            });
+
+            populateBoundsPointList();
+            updateRefImageInfo();
+
+            const excluded = validPoints.length - boundsIncludedPoints.size;
+            if (excluded > 0) {
+                showModal(`Excluded ${excluded} outlier${excluded > 1 ? 's' : ''} (>${outlierThreshold.toFixed(1)}km from center)`);
+            } else {
+                showModal("No outliers detected - all points are within reasonable distance.");
+            }
+        }
+
+        function getSelectedBounds() {
+            const selectedPoints = locationsData.filter(l => l.lat && l.lng && boundsIncludedPoints.has(l.id));
+            if (selectedPoints.length === 0) return null;
+
+            const bounds = new google.maps.LatLngBounds();
+            selectedPoints.forEach(p => bounds.extend({ lat: p.lat, lng: p.lng }));
+            return bounds;
+        }
+
+        function updateRefImageInfo() {
+            const validPoints = locationsData.filter(l => l.lat && l.lng);
+
+            if (validPoints.length === 0) {
+                document.getElementById('ref-image-info').classList.add('hidden');
+                return;
+            }
+
+            // Initialize included points if needed
+            if (boundsIncludedPoints.size === 0) {
+                validPoints.forEach(p => boundsIncludedPoints.add(p.id));
+            }
+
+            // Populate point list
+            populateBoundsPointList();
+
+            const bounds = getSelectedBounds();
+            if (!bounds) {
+                document.getElementById('ref-point-count').textContent = `0 / ${validPoints.length}`;
+                return;
+            }
+
+            // Update point count
+            document.getElementById('ref-point-count').textContent = `${boundsIncludedPoints.size} / ${validPoints.length}`;
+
+            const ne = bounds.getNorthEast();
+            const sw = bounds.getSouthWest();
+
+            // Add 10% buffer to bounds
+            const latBuffer = (ne.lat() - sw.lat()) * 0.10;
+            const lngBuffer = (ne.lng() - sw.lng()) * 0.10;
+
+            const north = ne.lat() + latBuffer;
+            const south = sw.lat() - latBuffer;
+            const east = ne.lng() + lngBuffer;
+            const west = sw.lng() - lngBuffer;
+
+            // Calculate aspect ratio accounting for latitude distortion
+            const centerLat = (north + south) / 2;
+            const geoWidth = Math.abs(east - west) * Math.cos(centerLat * Math.PI / 180);
+            const geoHeight = Math.abs(north - south);
+            refImageAspectRatio = geoWidth / geoHeight;
+
+            // Update UI
+            document.getElementById('ref-north').textContent = north.toFixed(5);
+            document.getElementById('ref-south').textContent = south.toFixed(5);
+            document.getElementById('ref-east').textContent = east.toFixed(5);
+            document.getElementById('ref-west').textContent = west.toFixed(5);
+            document.getElementById('ref-aspect').textContent = refImageAspectRatio.toFixed(3) + ':1';
+
+            // Calculate suggested dimensions
+            const width = 1280;
+            const height = 1280;
+            const refSizeEl = document.getElementById('ref-size');
+            if (refSizeEl) refSizeEl.textContent = `${width} × ${height} px`;
+
+            document.getElementById('ref-image-info').classList.remove('hidden');
+        }
+
+        function generateReferenceImage() {
+            if (!map) {
+                showModal('Map is not loaded yet.');
+                return;
+            }
+
+            // Read the EXACT current view from the interactive map
+            const center = map.getCenter();
+            const zoom = map.getZoom();
+            const mapBounds = map.getBounds();
+
+            if (!center || !mapBounds) {
+                showModal('Please wait for the map to fully load.');
+                return;
+            }
+
+            const centerLat = center.lat();
+            const centerLng = center.lng();
+            const ne = mapBounds.getNorthEast();
+            const sw = mapBounds.getSouthWest();
+
+            // Show capturing state
+            const captureBtn = document.getElementById('generate-ref-image');
+            const origText = captureBtn.textContent;
+            captureBtn.textContent = '⏳ Capturing...';
+            captureBtn.disabled = true;
+
+            // Static Maps: 640x640 at scale 2 = 1280x1280 pixels
+            const useWidth = 640;
+            const useHeight = 640;
+            const scale = 2;
+
+            // Build style parameters: clean map (no labels, no POI)
+            const captureStyles = [
+                'style=feature:all|element:labels|visibility:off',
+                'style=feature:administrative|element:geometry|visibility:off',
+                'style=feature:poi|element:all|visibility:off'
+            ];
+            let styleParams = captureStyles.join('&');
+
+            // Build marker params from current venue pins
+            let markerParams = '';
+            if (markers.length > 0) {
+                const markerCoords = markers.map((m, i) => {
+                    const pos = m.marker.position || m.marker.getPosition();
+                    const lat = typeof pos.lat === 'function' ? pos.lat() : pos.lat;
+                    const lng = typeof pos.lng === 'function' ? pos.lng() : pos.lng;
+                    return `markers=color:red|label:${i + 1}|${lat},${lng}`;
+                });
+                markerParams = '&' + markerCoords.join('&');
+            }
+
+            let staticMapUrl = `https://maps.googleapis.com/maps/api/staticmap?` +
+                `center=${centerLat.toFixed(6)},${centerLng.toFixed(6)}` +
+                `&zoom=${zoom}` +
+                `&size=${useWidth}x${useHeight}` +
+                `&scale=${scale}` +
+                `&maptype=roadmap` +
+                `&key=${GOOGLE_API_KEY}`;
+
+            staticMapUrl += '&' + styleParams;
+            if (markerParams) staticMapUrl += markerParams;
+
+            // Georeferencing bounds from the current view
+            const boundsData = {
+                bounds: {
+                    north: ne.lat(),
+                    south: sw.lat(),
+                    east: ne.lng(),
+                    west: sw.lng()
+                },
+                center: { lat: centerLat, lng: centerLng },
+                zoom: zoom,
+                imageDimensions: { width: useWidth * scale, height: useHeight * scale },
+                venues: locationsData.filter(l => l.lat && l.lng).map(l => ({
+                    name: l.inputName || l.name,
+                    lat: l.lat,
+                    lng: l.lng
+                })),
+                timestamp: new Date().toISOString()
+            };
+
+            // Fetch via local proxy to get CORS-safe image, then convert to base64
+            const proxyUrl = '/proxy?url=' + encodeURIComponent(staticMapUrl);
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => {
+                // Draw to canvas and convert to base64
+                const cvs = document.createElement('canvas');
+                cvs.width = img.naturalWidth;
+                cvs.height = img.naturalHeight;
+                const ctx = cvs.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+                const dataUrl = cvs.toDataURL('image/png');
+
+                console.log('✓ Captured styled map as base64 (' + Math.round(dataUrl.length / 1024) + ' KB)');
+
+                // Show inline preview
+                const previewSection = document.getElementById('capture-preview');
+                const previewImg = document.getElementById('capture-preview-img');
+                const captureInfo = document.getElementById('capture-info');
+
+                previewImg.src = dataUrl;
+                captureInfo.textContent = `Zoom ${zoom} · Center ${centerLat.toFixed(4)}, ${centerLng.toFixed(4)} · ${markers.length} venue(s) · ${img.naturalWidth}×${img.naturalHeight}px`;
+                previewSection.classList.remove('hidden');
+
+                // Georef data is stored for Studio handoff (no download needed)
+
+                // Scroll to preview
+                previewSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+                // Restore button
+                captureBtn.textContent = origText;
+                captureBtn.disabled = false;
+            };
+            img.onerror = () => {
+                console.error('Failed to load Static Maps image via proxy');
+                showModal('Capture failed. Make sure server.py is running (python3 server.py)');
+                captureBtn.textContent = origText;
+                captureBtn.disabled = false;
+            };
+            img.src = proxyUrl;
+        }
+
+        document.getElementById('generate-ref-image').addEventListener('click', generateReferenceImage);
+
+        // ============ OPEN IN STUDIO (sessionStorage handoff) ============
+        document.getElementById('open-in-studio-btn')?.addEventListener('click', () => {
+            const previewImg = document.getElementById('capture-preview-img');
+            if (!previewImg || !previewImg.src || previewImg.src === 'data:,') {
+                showModal('Please capture the map view first.');
+                return;
+            }
+
+            // Save captured image + metadata to sessionStorage for Studio
+            try {
+                sessionStorage.setItem('studioMapImage', previewImg.src);
+                sessionStorage.setItem('studioVenues', JSON.stringify(
+                    locationsData.filter(l => l.lat && l.lng).map(l => ({
+                        name: l.inputName || l.officialName,
+                        lat: l.lat,
+                        lng: l.lng
+                    }))
+                ));
+
+                const mapBounds = map.getBounds();
+                if (mapBounds) {
+                    const ne = mapBounds.getNorthEast();
+                    const sw = mapBounds.getSouthWest();
+                    sessionStorage.setItem('studioBounds', JSON.stringify({
+                        north: ne.lat(), south: sw.lat(),
+                        east: ne.lng(), west: sw.lng()
+                    }));
+                }
+
+                sessionStorage.setItem('studioZoom', map.getZoom());
+                sessionStorage.setItem('studioCenter', JSON.stringify({
+                    lat: map.getCenter().lat(),
+                    lng: map.getCenter().lng()
+                }));
+
+                console.log('✓ Saved map data to sessionStorage for Studio');
+                window.location.href = 'studio.html';
+            } catch (e) {
+                console.error('Failed to save to sessionStorage:', e);
+                showModal('Image too large for sessionStorage. Try downloading and loading in Studio manually.');
+            }
+        });
+
+    </script>
+
+    <!-- This block securely loads and uses your API key -->
+    <script>
+        function loadScripts() {
+            const configScript = document.createElement('script');
+            configScript.src = 'config.js';
+
+            configScript.onload = function () {
+                if (typeof GOOGLE_API_KEY === 'undefined' || GOOGLE_API_KEY === "PASTE_YOUR_ACTUAL_API_KEY_HERE") {
+                    displayConfigError("Please add your API key to the <strong>config.js</strong> file.");
+                    return;
+                }
+
+                const mapScript = document.createElement('script');
+                mapScript.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_API_KEY}&callback=initMap&libraries=maps,marker,places&loading=async`;
+                mapScript.async = true;
+                mapScript.onerror = () => {
+                    displayConfigError("Failed to load Google Maps script. Check API key validity and network connection.");
+                };
+                document.head.appendChild(mapScript);
+            };
+
+            configScript.onerror = function () {
+                let errorMsg = "Could not load <strong>config.js</strong>. Ensure the file exists in the same folder as this HTML file.";
+                if (window.location.protocol === 'file:') {
+                    errorMsg = "<strong>CRITICAL:</strong> You are opening this file directly in the browser (file:///...).<br><br>This will not work for security reasons. Please open the folder in VS Code and click the <strong>'Go Live'</strong> button in the bottom-right corner to run the application on a local server.";
+                }
+                displayConfigError(errorMsg);
+            };
+
+            document.head.appendChild(configScript);
+        }
+
+        function displayConfigError(message) {
+            const mapDiv = document.getElementById('map');
+            const controlPanel = document.querySelector('.md\\:w-1\\/3'); // Get the main control panel
+            const errorHtml = `<div class="p-4 text-red-400 bg-red-500/10 border border-red-500/20 h-full flex items-center justify-center text-center rounded-xl">${message}</div>`;
+
+            if (mapDiv) {
+                mapDiv.innerHTML = errorHtml;
+            }
+            if (controlPanel) {
+                // Also display the error in the control panel to make it unmissable
+                controlPanel.innerHTML = `<h1 class="text-2xl font-bold text-red-400 mb-4">CRITICAL ERROR</h1>` + errorHtml;
+            }
+            console.error("Configuration Error:", message);
+        }
+
+        loadScripts();
+    </script>
+</body>
+
+</html>

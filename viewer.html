@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HipMaps Viewer - Tile Overlay</title>
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🗺️</text></svg>">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Rubik', sans-serif;
+            background-color: #0f172a;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        :root {
+            --brand-orange: #F26522;
+            --brand-blue: #2E3192;
+        }
+
+        #map {
+            width: 100%;
+            height: 100vh;
+        }
+
+        .control-panel {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            max-width: 320px;
+        }
+
+        .control-panel h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #2E3192;
+            margin: 0 0 4px 0;
+        }
+
+        .control-panel .subtitle {
+            font-size: 0.8rem;
+            color: #64748b;
+            margin-bottom: 16px;
+        }
+
+        .control-group {
+            margin-bottom: 16px;
+        }
+
+        .control-group label {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #475569;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .control-group input[type="text"] {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        .control-group input[type="text"]:focus {
+            outline: none;
+            border-color: #F26522;
+            box-shadow: 0 0 0 3px rgba(242, 101, 34, 0.1);
+        }
+
+        .control-group input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #e2e8f0;
+            appearance: none;
+            cursor: pointer;
+        }
+
+        .control-group input[type="range"]::-webkit-slider-thumb {
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #F26522;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(242, 101, 34, 0.4);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #F26522, #e55a1b);
+            color: white;
+            box-shadow: 0 4px 12px rgba(242, 101, 34, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(242, 101, 34, 0.4);
+        }
+
+        .btn-secondary {
+            background: #f1f5f9;
+            color: #475569;
+            margin-top: 8px;
+        }
+
+        .btn-secondary:hover {
+            background: #e2e8f0;
+        }
+
+        .status {
+            margin-top: 16px;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+        }
+
+        .status.success {
+            background: #f0fdf4;
+            color: #166534;
+            border: 1px solid #bbf7d0;
+        }
+
+        .status.error {
+            background: #fef2f2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+        }
+
+        .status.info {
+            background: #eff6ff;
+            color: #1d4ed8;
+            border: 1px solid #bfdbfe;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .nav-links a {
+            font-size: 0.75rem;
+            color: #64748b;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .nav-links a:hover {
+            color: #F26522;
+        }
+
+        .opacity-value {
+            font-size: 0.8rem;
+            color: #64748b;
+            text-align: right;
+            margin-top: 4px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="map"></div>
+
+    <div class="control-panel">
+        <h1>🗺️ HipMaps Viewer</h1>
+        <p class="subtitle">Overlay your georeferenced tiles</p>
+
+        <div class="control-group">
+            <label>Tile URL Pattern</label>
+            <input type="text" id="tile-url" value="tiles/{z}/{x}/{y}.png" placeholder="tiles/{z}/{x}/{y}.png">
+        </div>
+
+        <div class="control-group">
+            <label>Opacity</label>
+            <input type="range" id="opacity" min="0" max="100" value="80">
+            <div class="opacity-value"><span id="opacity-value">80</span>%</div>
+        </div>
+
+        <button class="btn btn-primary" id="load-tiles">Load Tiles</button>
+        <button class="btn btn-secondary" id="toggle-overlay">Toggle Overlay</button>
+
+        <div id="status" class="status info">
+            Enter your tile URL and click "Load Tiles"
+        </div>
+
+        <div class="nav-links">
+            <a href="index.html">← Pinpointer</a>
+            <a href="aligner.html">← Aligner</a>
+            <a href="studio.html">🎨 Studio</a>
+        </div>
+    </div>
+
+
+    <script>
+        let map;
+        let tileOverlay = null;
+
+        async function initMap() {
+            const { Map } = await google.maps.importLibrary("maps");
+
+            map = new Map(document.getElementById("map"), {
+                center: { lat: 38.5, lng: -122.5 },
+                zoom: 12,
+                mapId: '655a16910df2ba15ec691449',
+                mapTypeControl: true,
+                streetViewControl: false,
+                fullscreenControl: true,
+            });
+
+            // Event listeners
+            document.getElementById('load-tiles').addEventListener('click', loadTiles);
+            document.getElementById('toggle-overlay').addEventListener('click', toggleOverlay);
+            document.getElementById('opacity').addEventListener('input', updateOpacity);
+
+            // Try to load tiles on init if URL is set
+            const urlParams = new URLSearchParams(window.location.search);
+            const tileUrl = urlParams.get('tiles');
+            if (tileUrl) {
+                document.getElementById('tile-url').value = decodeURIComponent(tileUrl);
+                loadTiles();
+            }
+        }
+
+        function loadTiles() {
+            const urlPattern = document.getElementById('tile-url').value.trim();
+
+            if (!urlPattern) {
+                showStatus('Please enter a tile URL pattern', 'error');
+                return;
+            }
+
+            // Remove existing overlay
+            if (tileOverlay) {
+                tileOverlay.setMap(null);
+            }
+
+            try {
+                const opacity = document.getElementById('opacity').value / 100;
+
+                tileOverlay = new google.maps.ImageMapType({
+                    getTileUrl: function (coord, zoom) {
+                        return urlPattern
+                            .replace('{z}', zoom)
+                            .replace('{x}', coord.x)
+                            .replace('{y}', coord.y);
+                    },
+                    tileSize: new google.maps.Size(256, 256),
+                    opacity: opacity,
+                    name: 'HipMaps Tiles'
+                });
+
+                map.overlayMapTypes.push(tileOverlay);
+                showStatus('✓ Tiles loaded! Pan/zoom to see your overlay', 'success');
+
+            } catch (error) {
+                showStatus('Error loading tiles: ' + error.message, 'error');
+            }
+        }
+
+        function toggleOverlay() {
+            if (!tileOverlay) {
+                showStatus('Load tiles first', 'error');
+                return;
+            }
+
+            if (map.overlayMapTypes.getLength() > 0) {
+                // Hide
+                map.overlayMapTypes.clear();
+                showStatus('Overlay hidden', 'info');
+            } else {
+                // Show
+                map.overlayMapTypes.push(tileOverlay);
+                showStatus('Overlay visible', 'success');
+            }
+        }
+
+        function updateOpacity() {
+            const value = document.getElementById('opacity').value;
+            document.getElementById('opacity-value').textContent = value;
+
+            if (tileOverlay) {
+                tileOverlay.setOpacity(value / 100);
+            }
+        }
+
+        function showStatus(message, type) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = 'status ' + type;
+        }
+
+        // Initialize map
+        window.initMap = initMap;
+    </script>
+    <script>
+        (function loadMapsAPI() {
+            const configScript = document.createElement('script');
+            configScript.src = 'config.js';
+            configScript.onload = function () {
+                if (typeof GOOGLE_API_KEY === 'undefined') {
+                    console.error('config.js loaded but GOOGLE_API_KEY not defined');
+                    return;
+                }
+                const mapsScript = document.createElement('script');
+                mapsScript.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_API_KEY}&callback=initMap`;
+                mapsScript.async = true;
+                mapsScript.defer = true;
+                document.head.appendChild(mapsScript);
+            };
+            configScript.onerror = function () {
+                console.error('Failed to load config.js — create it with: const GOOGLE_API_KEY = "your-key";');
+            };
+            document.head.appendChild(configScript);
+        })();
+    </script>
+</body>
+
+</html>

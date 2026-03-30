@@ -1,0 +1,23 @@
+# Generated map tiles (large number of files)
+tiles/
+tiles_new/
+tiles_old/
+tiles*/
+
+# Geo-referenced TIFF files (typically large)
+*.tif
+
+# API key config (do NOT commit)
+config.js
+
+# Large source / upscaled images (keep only web-ready versions)
+*_upscayl_*.png
+Monterywiththreeplacesnoicon.png
+Monterywiththreepoints.png
+
+# OS generated files
+.DS_Store
+
+# Editor directories
+.idea/
+.vscode/

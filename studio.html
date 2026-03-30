@@ -1,0 +1,1479 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HipMaps Studio — Artistic Map Stylizer</title>
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎨</text></svg>">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            min-height: 100vh;
+            color: #e2e8f0;
+        }
+
+        :root {
+            --brand-orange: #F26522;
+            --brand-blue: #2E3192;
+        }
+
+        /* Glass Card */
+        .glass-card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+        }
+
+        /* Drop zone */
+        #drop-zone {
+            border: 2px dashed rgba(255, 255, 255, 0.1);
+            background-color: rgba(255, 255, 255, 0.03);
+            border-radius: 16px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        #drop-zone:hover,
+        #drop-zone.dragover {
+            border-color: var(--brand-orange);
+            background-color: rgba(242, 101, 34, 0.08);
+            transform: scale(1.01);
+            box-shadow: 0 0 20px rgba(242, 101, 34, 0.1);
+        }
+
+        /* Buttons */
+        .btn-primary {
+            background: linear-gradient(135deg, #F26522, #e05515);
+            color: white;
+            font-weight: 600;
+            padding: 12px 24px;
+            border-radius: 12px;
+            transition: all 0.2s;
+            box-shadow: 0 4px 12px rgba(242, 101, 34, 0.3);
+            border: none;
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(242, 101, 34, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.08);
+            color: #e2e8f0;
+            font-weight: 600;
+            padding: 10px 20px;
+            border-radius: 10px;
+            transition: all 0.2s;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .btn-secondary.active {
+            background: rgba(242, 101, 34, 0.2);
+            border-color: #F26522;
+            color: #F26522;
+        }
+
+        /* Filter preset grid */
+        .filter-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+
+        .filter-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 14px 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #cbd5e1;
+            font-family: inherit;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .filter-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.15);
+            transform: translateY(-1px);
+        }
+
+        .filter-btn.active {
+            background: rgba(242, 101, 34, 0.15);
+            border-color: #F26522;
+            color: #F26522;
+            box-shadow: 0 0 12px rgba(242, 101, 34, 0.2);
+        }
+
+        .filter-btn .filter-icon {
+            font-size: 1.4rem;
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        /* Slider styling */
+        .slider-group label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: #94a3b8;
+            margin-bottom: 4px;
+        }
+
+        .slider-group input[type="range"] {
+            width: 100%;
+            height: 4px;
+            border-radius: 2px;
+            background: rgba(255, 255, 255, 0.1);
+            appearance: none;
+            cursor: pointer;
+            margin-bottom: 12px;
+        }
+
+        .slider-group input[type="range"]::-webkit-slider-thumb {
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #F26522;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(242, 101, 34, 0.4);
+        }
+
+        /* Canvas area */
+        #canvas-container {
+            background: #1a1a2e;
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 500px;
+        }
+
+        #canvas-container canvas {
+            max-width: 100%;
+            max-height: 75vh;
+            display: block;
+        }
+
+        #canvas-placeholder {
+            text-align: center;
+            color: #475569;
+        }
+
+        /* Overlay toggle */
+        .overlay-toggle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .overlay-toggle:hover {
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .overlay-toggle.active {
+            background: rgba(242, 101, 34, 0.1);
+            border-color: rgba(242, 101, 34, 0.3);
+        }
+
+        .toggle-switch {
+            width: 36px;
+            height: 20px;
+            background: #475569;
+            border-radius: 10px;
+            position: relative;
+            transition: background 0.2s;
+            flex-shrink: 0;
+        }
+
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            background: white;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: transform 0.2s;
+        }
+
+        .overlay-toggle.active .toggle-switch {
+            background: #F26522;
+        }
+
+        .overlay-toggle.active .toggle-switch::after {
+            transform: translateX(16px);
+        }
+
+        /* Section header */
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .section-header .icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.95rem;
+            flex-shrink: 0;
+        }
+
+        .section-header h3 {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: #f1f5f9;
+        }
+
+        .section-divider {
+            border: none;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            margin: 16px 0;
+        }
+
+        /* Text input styling */
+        .studio-input {
+            width: 100%;
+            padding: 10px 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            color: #e2e8f0;
+            font-family: inherit;
+            font-size: 0.85rem;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .studio-input:focus {
+            border-color: #F26522;
+            box-shadow: 0 0 0 2px rgba(242, 101, 34, 0.15);
+        }
+
+        .studio-select {
+            width: 100%;
+            padding: 10px 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            color: #e2e8f0;
+            font-family: inherit;
+            font-size: 0.85rem;
+            outline: none;
+            appearance: none;
+            cursor: pointer;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 5l3 3 3-3' stroke='%2394a3b8' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+        }
+
+        /* Nav */
+        .tool-nav {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .tool-nav a {
+            background: rgba(255, 255, 255, 0.06);
+            color: #94a3b8;
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 6px 14px;
+            border-radius: 20px;
+            text-decoration: none;
+            transition: all 0.2s;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .tool-nav a:hover {
+            background: rgba(242, 101, 34, 0.15);
+            color: #F26522;
+            border-color: rgba(242, 101, 34, 0.3);
+        }
+
+        /* Color picker wrapper */
+        .color-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .color-row input[type="color"] {
+            width: 32px;
+            height: 32px;
+            border: 2px solid rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+            cursor: pointer;
+            background: none;
+            padding: 0;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Header -->
+    <div class="w-full border-b border-white/5 bg-[#0f172a] shadow-lg" style="position: sticky; top: 0; z-index: 100;">
+        <div style="max-width: 1400px; margin: 0 auto; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div
+                    style="width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(135deg, #2E3192, #F26522); display: flex; align-items: center; justify-content: center; font-size: 20px;">
+                    🎨
+                </div>
+                <div>
+                    <h1 style="font-size: 1.15rem; font-weight: 700; color: white; line-height: 1.2;">HipMaps Studio</h1>
+                    <p style="font-size: 0.7rem; color: #64748b; font-weight: 500; letter-spacing: 0.5px;">ARTISTIC MAP STYLIZER</p>
+                </div>
+            </div>
+            <div class="tool-nav">
+                <a href="index.html">📍 Pinpointer</a>
+                <a href="viewer.html">🗺️ Viewer</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Layout -->
+    <div style="max-width: 1400px; margin: 0 auto; padding: 24px; display: flex; gap: 24px; flex-wrap: wrap;">
+
+        <!-- Left Panel: Controls -->
+        <div style="width: 320px; flex-shrink: 0; display: flex; flex-direction: column; gap: 16px;">
+
+            <!-- Upload -->
+            <div class="glass-card" style="padding: 20px;">
+                <div class="section-header">
+                    <div class="icon" style="background: rgba(242, 101, 34, 0.15); color: #F26522;">📁</div>
+                    <h3>Upload Map / Style Reference</h3>
+                </div>
+                <div id="drop-zone"
+                    style="padding: 32px 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                        stroke="currentColor" style="width: 36px; height: 36px; color: #475569; margin-bottom: 10px;">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+                    </svg>
+                    <p style="font-size: 0.85rem; font-weight: 500; color: #94a3b8;">Drop image or click to browse</p>
+                    <p style="font-size: 0.7rem; color: #475569; margin-top: 4px;">PNG, JPG — your clean reference map</p>
+                    <input type="file" id="file-input" accept="image/*" style="display: none;">
+                </div>
+                <p id="file-info" style="font-size: 0.75rem; color: #F26522; margin-top: 8px; display: none; font-weight: 500;"></p>
+            </div>
+
+            <!-- Filter Presets -->
+            <div class="glass-card" style="padding: 20px;">
+                <div class="section-header">
+                    <div class="icon" style="background: rgba(139, 92, 246, 0.15); color: #a78bfa;">✨</div>
+                    <h3>Artistic Filters</h3>
+                </div>
+                <div class="filter-grid" id="filter-grid">
+                    <button class="filter-btn active" data-filter="original" title="No filter applied">
+                        <span class="filter-icon">🖼️</span>
+                        Original
+                    </button>
+                    <button class="filter-btn" data-filter="vintage" title="Warm sepia tones with vignette">
+                        <span class="filter-icon">📜</span>
+                        Vintage
+                    </button>
+                    <button class="filter-btn" data-filter="watercolor" title="Soft blur + saturation boost">
+                        <span class="filter-icon">🎨</span>
+                        Watercolor
+                    </button>
+                    <button class="filter-btn" data-filter="ink" title="High contrast ink sketch">
+                        <span class="filter-icon">🖋️</span>
+                        Ink
+                    </button>
+                    <button class="filter-btn" data-filter="blueprint" title="Blue technical drawing style">
+                        <span class="filter-icon">📐</span>
+                        Blueprint
+                    </button>
+                    <button class="filter-btn" data-filter="satellite" title="High contrast aerial look">
+                        <span class="filter-icon">🛰️</span>
+                        Aerial
+                    </button>
+                </div>
+
+                <hr class="section-divider">
+
+                <!-- Custom Sliders -->
+                <div class="slider-group">
+                    <label><span>Brightness</span><span id="brightness-val">100%</span></label>
+                    <input type="range" id="brightness" min="20" max="200" value="100">
+                </div>
+                <div class="slider-group">
+                    <label><span>Contrast</span><span id="contrast-val">100%</span></label>
+                    <input type="range" id="contrast" min="20" max="200" value="100">
+                </div>
+                <div class="slider-group">
+                    <label><span>Saturation</span><span id="saturate-val">100%</span></label>
+                    <input type="range" id="saturate" min="0" max="300" value="100">
+                </div>
+                <div class="slider-group">
+                    <label><span>Hue Rotate</span><span id="hue-val">0°</span></label>
+                    <input type="range" id="hue-rotate" min="0" max="360" value="0">
+                </div>
+                <div class="slider-group">
+                    <label><span>Blur</span><span id="blur-val">0px</span></label>
+                    <input type="range" id="blur" min="0" max="10" value="0" step="0.5">
+                </div>
+                <div class="slider-group">
+                    <label><span>Sepia</span><span id="sepia-val">0%</span></label>
+                    <input type="range" id="sepia" min="0" max="100" value="0">
+                </div>
+
+                <button id="reset-filters" class="btn-secondary" style="width: 100%; margin-top: 4px; font-size: 0.8rem;">
+                    ↺ Reset All Filters
+                </button>
+            </div>
+
+            <!-- 🤖 AI Stylize (Nano Banana 2 / Gemini 3.1 Flash) -->
+            <div class="glass-card" style="padding: 20px;">
+                <div class="section-header">
+                    <div class="icon" style="background: linear-gradient(135deg, rgba(139,92,246,0.25), rgba(242,101,34,0.25)); color: #c084fc;">🤖</div>
+                    <h3>AI Stylize <span style="font-size: 0.65rem; font-weight: 400; color: #64748b; margin-left: 4px;">Nano Banana 2</span></h3>
+                </div>
+                <p style="font-size: 0.75rem; color: #64748b; margin-bottom: 12px; line-height: 1.5;">
+                    Send the current canvas to Nano Banana 2 (Gemini 3.1 Flash) for AI artistic tracing. The map geometry stays identical — only the look changes.
+                </p>
+
+                <!-- Style Presets -->
+                <div style="margin-bottom: 12px;">
+                    <label style="display: block; font-size: 0.7rem; font-weight: 600; color: #94a3b8; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.6px;">Style Preset</label>
+                    <select id="ai-style-preset" class="studio-select" title="AI artistic style preset">
+                        <option value="vintage-cartography">📜 Vintage Cartography</option>
+                        <option value="watercolor">🎨 Watercolor Painting</option>
+                        <option value="ink-drawing">🖋️ Ink Line Drawing</option>
+                        <option value="wine-country">🍇 Earthy Wine Country</option>
+                        <option value="blueprint">📐 Technical Blueprint</option>
+                        <option value="custom">✏️ Custom Prompt</option>
+                    </select>
+                </div>
+
+                <!-- Custom prompt (hidden by default) -->
+                <div id="ai-custom-prompt-wrapper" style="display: none; margin-bottom: 12px;">
+                    <textarea id="ai-custom-prompt" class="studio-input" rows="3"
+                        placeholder="Describe the artistic style you want..."
+                        style="resize: vertical; min-height: 60px;"></textarea>
+                </div>
+
+                <!-- Preserve markers toggle -->
+                <div class="overlay-toggle" id="ai-preserve-markers" style="margin-bottom: 12px;" onclick="this.classList.toggle('active')">
+                    <div class="toggle-switch"></div>
+                    <div>
+                        <div style="font-size: 0.82rem; font-weight: 600;">Preserve Venue Markers</div>
+                        <div style="font-size: 0.68rem; color: #64748b;">Keep pins visible in output</div>
+                    </div>
+                </div>
+
+                <button id="ai-stylize-btn" class="btn-primary" style="width: 100%; font-size: 0.9rem; position: relative; overflow: hidden;" disabled>
+                    🤖 Generate AI Style
+                </button>
+
+                <!-- Progress -->
+                <div id="ai-progress" style="display: none; margin-top: 12px;">
+                    <div style="height: 4px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden;">
+                        <div id="ai-progress-bar" style="height: 100%; width: 0%; background: linear-gradient(90deg, #a78bfa, #F26522); border-radius: 2px; transition: width 0.5s ease;"></div>
+                    </div>
+                    <p id="ai-status-text" style="font-size: 0.73rem; color: #a78bfa; margin-top: 6px; text-align: center;">Preparing image...</p>
+                </div>
+
+                <!-- Result actions (hidden until result) -->
+                <div id="ai-result-actions" style="display: none; margin-top: 10px;">
+                    <div style="display: flex; gap: 8px;">
+                        <button id="ai-accept-btn" class="btn-secondary" style="flex: 1; font-size: 0.8rem; background: rgba(16,185,129,0.15); border-color: rgba(16,185,129,0.3); color: #34d399;">✓ Accept</button>
+                        <button id="ai-reject-btn" class="btn-secondary" style="flex: 1; font-size: 0.8rem;">✗ Revert</button>
+                    </div>
+                </div>
+
+                <p style="font-size: 0.67rem; color: #475569; margin-top: 8px; text-align: center;">
+                    Powered by Nano Banana 2 (Gemini 3.1 Flash) · 4K output
+                </p>
+            </div>
+
+            <!-- Overlays -->
+            <div class="glass-card" style="padding: 20px;">
+                <div class="section-header">
+                    <div class="icon" style="background: rgba(16, 185, 129, 0.15); color: #34d399;">🧭</div>
+                    <h3>Overlays</h3>
+                </div>
+
+                <!-- Compass Rose -->
+                <div class="overlay-toggle" id="compass-toggle" onclick="toggleCompass()">
+                    <div class="toggle-switch"></div>
+                    <div>
+                        <div style="font-size: 0.85rem; font-weight: 600;">🧭 Compass Rose</div>
+                        <div style="font-size: 0.7rem; color: #64748b;">Drag to reposition on canvas</div>
+                    </div>
+                </div>
+
+                <div id="compass-options" style="display: none; margin-top: 12px;">
+                    <div class="slider-group">
+                        <label><span>Size</span><span id="compass-size-val">80px</span></label>
+                        <input type="range" id="compass-size" min="40" max="200" value="80">
+                    </div>
+                    <div class="slider-group">
+                        <label><span>Opacity</span><span id="compass-opacity-val">90%</span></label>
+                        <input type="range" id="compass-opacity" min="10" max="100" value="90">
+                    </div>
+                </div>
+
+                <hr class="section-divider">
+
+                <!-- Custom Text -->
+                <div class="overlay-toggle" id="text-toggle" onclick="toggleText()">
+                    <div class="toggle-switch"></div>
+                    <div>
+                        <div style="font-size: 0.85rem; font-weight: 600;">📝 Custom Text</div>
+                        <div style="font-size: 0.7rem; color: #64748b;">Add titles, branding, credits</div>
+                    </div>
+                </div>
+
+                <div id="text-options" style="display: none; margin-top: 12px;">
+                    <input type="text" id="overlay-text" class="studio-input" placeholder="Enter text..." value="HipMaps"
+                        style="margin-bottom: 8px;">
+                    <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                        <select id="text-font" class="studio-select" title="Font family">
+                            <option value="Inter">Inter</option>
+                            <option value="Georgia">Georgia (Serif)</option>
+                            <option value="Courier New">Courier New</option>
+                            <option value="Arial Black">Arial Black</option>
+                        </select>
+                    </div>
+                    <div class="slider-group">
+                        <label><span>Font Size</span><span id="text-size-val">32px</span></label>
+                        <input type="range" id="text-size" min="12" max="120" value="32">
+                    </div>
+                    <div class="color-row" style="margin-bottom: 12px;">
+                        <input type="color" id="text-color" value="#F26522" title="Text color">
+                        <span style="font-size: 0.75rem; color: #94a3b8;">Text Color</span>
+                    </div>
+                </div>
+
+                <hr class="section-divider">
+
+                <!-- Logo Upload -->
+                <div class="overlay-toggle" id="logo-toggle" onclick="toggleLogo()">
+                    <div class="toggle-switch"></div>
+                    <div>
+                        <div style="font-size: 0.85rem; font-weight: 600;">🏷️ Logo Overlay</div>
+                        <div style="font-size: 0.7rem; color: #64748b;">Upload PNG logo</div>
+                    </div>
+                </div>
+
+                <div id="logo-options" style="display: none; margin-top: 12px;">
+                    <input type="file" id="logo-input" accept="image/*" style="display: none;">
+                    <button id="logo-upload-btn" class="btn-secondary" style="width: 100%; font-size: 0.8rem;"
+                        onclick="document.getElementById('logo-input').click();">
+                        Choose Logo File
+                    </button>
+                    <p id="logo-info" style="font-size: 0.7rem; color: #F26522; margin-top: 6px; display: none;"></p>
+                    <div class="slider-group" style="margin-top: 8px;">
+                        <label><span>Logo Size</span><span id="logo-size-val">80px</span></label>
+                        <input type="range" id="logo-size" min="30" max="300" value="80">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Final Step: Make Tile Layer -->
+            <div class="glass-card" style="padding: 20px;">
+                <div class="section-header">
+                    <div class="icon" style="background: rgba(34, 197, 94, 0.15); color: #4ade80;">🧩</div>
+                    <h3>Ready — Make Tile Layer</h3>
+                </div>
+                <button id="download-btn" class="btn-primary" style="width: 100%; font-size: 0.95rem; background: linear-gradient(135deg, #22c55e, #16a34a);" disabled>
+                    🧩 Generate Tile Layer
+                </button>
+                <p style="font-size: 0.7rem; color: #475569; margin-top: 8px; text-align: center;">
+                    Exports full-resolution PNG and slices into map tiles for the viewer
+                </p>
+            </div>
+        </div>
+
+        <!-- Right: Canvas Preview -->
+        <div style="flex: 1; min-width: 0;">
+            <div class="glass-card" style="padding: 16px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h3 style="font-size: 0.85rem; font-weight: 600; color: #94a3b8;">
+                        Live Preview
+                        <span id="dimensions-badge"
+                            style="font-size: 0.7rem; background: rgba(255,255,255,0.06); padding: 2px 8px; border-radius: 6px; margin-left: 8px; font-weight: 500;"></span>
+                    </h3>
+                    <div style="display: flex; gap: 8px;">
+                        <button id="zoom-fit" class="btn-secondary" style="padding: 6px 12px; font-size: 0.75rem;" title="Fit to view">
+                            Fit
+                        </button>
+                        <button id="zoom-100" class="btn-secondary" style="padding: 6px 12px; font-size: 0.75rem;" title="100% zoom">
+                            100%
+                        </button>
+                    </div>
+                </div>
+                <div id="canvas-container">
+                    <div id="canvas-placeholder">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1"
+                            stroke="currentColor" style="width: 64px; height: 64px; margin: 0 auto 16px; display: block;">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+                        </svg>
+                        <p style="font-size: 1.1rem; font-weight: 600; margin-bottom: 6px;">Upload a reference map to begin</p>
+                        <p style="font-size: 0.8rem;">Generate one from the <a href="index.html"
+                                style="color: #F26522; text-decoration: none;">Pinpointer</a> (use "Clean — No Labels"
+                            style)</p>
+                    </div>
+                    <canvas id="preview-canvas" style="display: none;"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============ State ============
+        let sourceImage = null;       // Original uploaded Image element
+        let logoImage = null;         // Logo Image element
+        let activeFilter = 'original';
+
+        // Overlay states
+        let compassEnabled = false;
+        let textEnabled = false;
+        let logoEnabled = false;
+
+        // Overlay positions (relative 0-1)
+        let compassPos = { x: 0.9, y: 0.85 };
+        let textPos = { x: 0.5, y: 0.08 };
+        let logoPos = { x: 0.1, y: 0.9 };
+
+        // Dragging
+        let isDragging = null; // 'compass', 'text', 'logo', or null
+        let dragOffset = { x: 0, y: 0 };
+
+        // Filter presets
+        const filterPresets = {
+            original:   { brightness: 100, contrast: 100, saturate: 100, hueRotate: 0, blur: 0, sepia: 0 },
+            vintage:    { brightness: 105, contrast: 90, saturate: 60, hueRotate: 15, blur: 0.3, sepia: 50 },
+            watercolor: { brightness: 110, contrast: 85, saturate: 160, hueRotate: 0, blur: 1.5, sepia: 5 },
+            ink:        { brightness: 120, contrast: 200, saturate: 0, hueRotate: 0, blur: 0, sepia: 0 },
+            blueprint:  { brightness: 90, contrast: 130, saturate: 80, hueRotate: 210, blur: 0.3, sepia: 10 },
+            satellite:  { brightness: 110, contrast: 140, saturate: 130, hueRotate: 0, blur: 0, sepia: 0 }
+        };
+
+        // ============ Image Upload ============
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+
+        dropZone.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length) loadImage(e.dataTransfer.files[0]);
+        });
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) loadImage(e.target.files[0]);
+        });
+
+        function loadImage(file) {
+            if (!file.type.startsWith('image/')) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    sourceImage = img;
+                    document.getElementById('file-info').textContent = `${file.name} (${img.width}×${img.height})`;
+                    document.getElementById('file-info').style.display = 'block';
+                    document.getElementById('dimensions-badge').textContent = `${img.width} × ${img.height}`;
+                    document.getElementById('download-btn').disabled = false;
+
+                    // Hide placeholder, show canvas
+                    document.getElementById('canvas-placeholder').style.display = 'none';
+                    document.getElementById('preview-canvas').style.display = 'block';
+
+                    renderCanvas();
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // ============ Auto-load from Pinpointer (sessionStorage handoff) ============
+        (function checkPinpointerHandoff() {
+            const dataUrl = sessionStorage.getItem('studioMapImage');
+            if (!dataUrl) return;
+
+            const img = new Image();
+            img.onload = () => {
+                sourceImage = img;
+                document.getElementById('file-info').textContent = `Pinpointer capture (${img.width}×${img.height})`;
+                document.getElementById('file-info').style.display = 'block';
+                document.getElementById('dimensions-badge').textContent = `${img.width} × ${img.height}`;
+                document.getElementById('download-btn').disabled = false;
+                document.getElementById('canvas-placeholder').style.display = 'none';
+                document.getElementById('preview-canvas').style.display = 'block';
+                const aiBtn = document.getElementById('ai-stylize-btn');
+                if (aiBtn) aiBtn.disabled = false;
+                renderCanvas();
+                // Clean up sessionStorage after loading
+                sessionStorage.removeItem('studioMapImage');
+                sessionStorage.removeItem('studioVenues');
+                sessionStorage.removeItem('studioBounds');
+                sessionStorage.removeItem('studioZoom');
+                sessionStorage.removeItem('studioCenter');
+                console.log('✓ Loaded Pinpointer capture into Studio');
+            };
+            img.onerror = () => {
+                console.warn('Could not load Pinpointer capture data URL.');
+            };
+            img.src = dataUrl;
+        })();
+
+        // ============ Logo Upload ============
+        document.getElementById('logo-input').addEventListener('change', (e) => {
+            if (!e.target.files.length) return;
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const img = new Image();
+                img.onload = () => {
+                    logoImage = img;
+                    document.getElementById('logo-info').textContent = file.name;
+                    document.getElementById('logo-info').style.display = 'block';
+                    renderCanvas();
+                };
+                img.src = ev.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // ============ Filter Presets ============
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+
+                activeFilter = btn.dataset.filter;
+                const preset = filterPresets[activeFilter];
+
+                // Update slider values
+                document.getElementById('brightness').value = preset.brightness;
+                document.getElementById('contrast').value = preset.contrast;
+                document.getElementById('saturate').value = preset.saturate;
+                document.getElementById('hue-rotate').value = preset.hueRotate;
+                document.getElementById('blur').value = preset.blur;
+                document.getElementById('sepia').value = preset.sepia;
+
+                updateSliderLabels();
+                renderCanvas();
+            });
+        });
+
+        // ============ Slider Controls ============
+        const sliders = ['brightness', 'contrast', 'saturate', 'hue-rotate', 'blur', 'sepia'];
+        sliders.forEach(id => {
+            document.getElementById(id).addEventListener('input', () => {
+                updateSliderLabels();
+                // Deactivate preset buttons when manually adjusting
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                renderCanvas();
+            });
+        });
+
+        function updateSliderLabels() {
+            document.getElementById('brightness-val').textContent = document.getElementById('brightness').value + '%';
+            document.getElementById('contrast-val').textContent = document.getElementById('contrast').value + '%';
+            document.getElementById('saturate-val').textContent = document.getElementById('saturate').value + '%';
+            document.getElementById('hue-val').textContent = document.getElementById('hue-rotate').value + '°';
+            document.getElementById('blur-val').textContent = document.getElementById('blur').value + 'px';
+            document.getElementById('sepia-val').textContent = document.getElementById('sepia').value + '%';
+        }
+
+        document.getElementById('reset-filters').addEventListener('click', () => {
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            document.querySelector('[data-filter="original"]').classList.add('active');
+            activeFilter = 'original';
+
+            const preset = filterPresets.original;
+            document.getElementById('brightness').value = preset.brightness;
+            document.getElementById('contrast').value = preset.contrast;
+            document.getElementById('saturate').value = preset.saturate;
+            document.getElementById('hue-rotate').value = preset.hueRotate;
+            document.getElementById('blur').value = preset.blur;
+            document.getElementById('sepia').value = preset.sepia;
+
+            updateSliderLabels();
+            renderCanvas();
+        });
+
+        // ============ Overlay Toggles ============
+        function toggleCompass() {
+            compassEnabled = !compassEnabled;
+            document.getElementById('compass-toggle').classList.toggle('active', compassEnabled);
+            document.getElementById('compass-options').style.display = compassEnabled ? 'block' : 'none';
+            renderCanvas();
+        }
+
+        function toggleText() {
+            textEnabled = !textEnabled;
+            document.getElementById('text-toggle').classList.toggle('active', textEnabled);
+            document.getElementById('text-options').style.display = textEnabled ? 'block' : 'none';
+            renderCanvas();
+        }
+
+        function toggleLogo() {
+            logoEnabled = !logoEnabled;
+            document.getElementById('logo-toggle').classList.toggle('active', logoEnabled);
+            document.getElementById('logo-options').style.display = logoEnabled ? 'block' : 'none';
+            renderCanvas();
+        }
+
+        // Overlay slider listeners
+        ['compass-size', 'compass-opacity', 'text-size', 'logo-size'].forEach(id => {
+            document.getElementById(id).addEventListener('input', (e) => {
+                const labelId = id + '-val';
+                const suffix = id.includes('opacity') ? '%' : 'px';
+                document.getElementById(labelId).textContent = e.target.value + suffix;
+                renderCanvas();
+            });
+        });
+
+        document.getElementById('overlay-text').addEventListener('input', renderCanvas);
+        document.getElementById('text-font').addEventListener('change', renderCanvas);
+        document.getElementById('text-color').addEventListener('input', renderCanvas);
+
+        // ============ Canvas Rendering ============
+        function getFilterString() {
+            const b = document.getElementById('brightness').value;
+            const c = document.getElementById('contrast').value;
+            const s = document.getElementById('saturate').value;
+            const h = document.getElementById('hue-rotate').value;
+            const bl = document.getElementById('blur').value;
+            const sp = document.getElementById('sepia').value;
+
+            return `brightness(${b}%) contrast(${c}%) saturate(${s}%) hue-rotate(${h}deg) blur(${bl}px) sepia(${sp}%)`;
+        }
+
+        function renderCanvas() {
+            if (!sourceImage) return;
+
+            const canvas = document.getElementById('preview-canvas');
+            const ctx = canvas.getContext('2d');
+
+            canvas.width = sourceImage.width;
+            canvas.height = sourceImage.height;
+
+            // Apply CSS filters
+            ctx.filter = getFilterString();
+            ctx.drawImage(sourceImage, 0, 0);
+
+            // Reset filter for overlays
+            ctx.filter = 'none';
+
+            // Vignette for vintage filter
+            if (activeFilter === 'vintage') {
+                drawVignette(ctx, canvas.width, canvas.height);
+            }
+
+            // Watercolor paper texture
+            if (activeFilter === 'watercolor') {
+                drawPaperTexture(ctx, canvas.width, canvas.height);
+            }
+
+            // Draw overlays
+            if (compassEnabled) drawCompass(ctx, canvas.width, canvas.height);
+            if (textEnabled) drawText(ctx, canvas.width, canvas.height);
+            if (logoEnabled && logoImage) drawLogo(ctx, canvas.width, canvas.height);
+        }
+
+        function drawVignette(ctx, w, h) {
+            const gradient = ctx.createRadialGradient(w / 2, h / 2, w * 0.2, w / 2, h / 2, w * 0.7);
+            gradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
+            gradient.addColorStop(1, 'rgba(0, 0, 0, 0.4)');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, w, h);
+        }
+
+        function drawPaperTexture(ctx, w, h) {
+            ctx.globalCompositeOperation = 'soft-light';
+            ctx.fillStyle = 'rgba(245, 235, 220, 0.15)';
+            ctx.fillRect(0, 0, w, h);
+
+            // Add subtle noise
+            const imageData = ctx.getImageData(0, 0, w, h);
+            const data = imageData.data;
+            for (let i = 0; i < data.length; i += 16) { // Sample every 4th pixel for performance
+                const noise = (Math.random() - 0.5) * 12;
+                data[i] += noise;
+                data[i + 1] += noise;
+                data[i + 2] += noise;
+            }
+            ctx.putImageData(imageData, 0, 0);
+            ctx.globalCompositeOperation = 'source-over';
+        }
+
+        // ============ Compass Rose ============
+        function drawCompass(ctx, canvasW, canvasH) {
+            const size = parseInt(document.getElementById('compass-size').value);
+            const opacity = parseInt(document.getElementById('compass-opacity').value) / 100;
+            const cx = compassPos.x * canvasW;
+            const cy = compassPos.y * canvasH;
+
+            ctx.save();
+            ctx.globalAlpha = opacity;
+            ctx.translate(cx, cy);
+
+            const r = size / 2;
+
+            // Outer circle
+            ctx.beginPath();
+            ctx.arc(0, 0, r, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+            ctx.fill();
+            ctx.strokeStyle = '#2E3192';
+            ctx.lineWidth = Math.max(2, r * 0.04);
+            ctx.stroke();
+
+            // Inner circle
+            ctx.beginPath();
+            ctx.arc(0, 0, r * 0.85, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(46, 49, 146, 0.3)';
+            ctx.lineWidth = Math.max(1, r * 0.02);
+            ctx.stroke();
+
+            // Cardinal arrows
+            const arrowLen = r * 0.7;
+            const arrowWidth = r * 0.15;
+
+            // North (red)
+            ctx.beginPath();
+            ctx.moveTo(0, -arrowLen);
+            ctx.lineTo(-arrowWidth, 0);
+            ctx.lineTo(0, -arrowWidth * 0.5);
+            ctx.lineTo(arrowWidth, 0);
+            ctx.closePath();
+            ctx.fillStyle = '#D32F2F';
+            ctx.fill();
+
+            // South
+            ctx.beginPath();
+            ctx.moveTo(0, arrowLen);
+            ctx.lineTo(-arrowWidth, 0);
+            ctx.lineTo(0, arrowWidth * 0.5);
+            ctx.lineTo(arrowWidth, 0);
+            ctx.closePath();
+            ctx.fillStyle = '#2E3192';
+            ctx.fill();
+
+            // East
+            ctx.beginPath();
+            ctx.moveTo(arrowLen, 0);
+            ctx.lineTo(0, -arrowWidth);
+            ctx.lineTo(arrowWidth * 0.5, 0);
+            ctx.lineTo(0, arrowWidth);
+            ctx.closePath();
+            ctx.fillStyle = '#475569';
+            ctx.fill();
+
+            // West
+            ctx.beginPath();
+            ctx.moveTo(-arrowLen, 0);
+            ctx.lineTo(0, -arrowWidth);
+            ctx.lineTo(-arrowWidth * 0.5, 0);
+            ctx.lineTo(0, arrowWidth);
+            ctx.closePath();
+            ctx.fillStyle = '#475569';
+            ctx.fill();
+
+            // Labels
+            const labelSize = Math.max(10, r * 0.28);
+            ctx.font = `bold ${labelSize}px Inter, sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = '#1e293b';
+
+            ctx.fillText('N', 0, -r * 0.85);
+            ctx.fillText('S', 0, r * 0.88);
+            ctx.fillText('E', r * 0.88, 0);
+            ctx.fillText('W', -r * 0.88, 0);
+
+            // Center dot
+            ctx.beginPath();
+            ctx.arc(0, 0, r * 0.06, 0, Math.PI * 2);
+            ctx.fillStyle = '#F26522';
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        // ============ Text Overlay ============
+        function drawText(ctx, canvasW, canvasH) {
+            const text = document.getElementById('overlay-text').value || 'HipMaps';
+            const font = document.getElementById('text-font').value;
+            const size = parseInt(document.getElementById('text-size').value);
+            const color = document.getElementById('text-color').value;
+
+            const x = textPos.x * canvasW;
+            const y = textPos.y * canvasH;
+
+            ctx.save();
+            ctx.font = `bold ${size}px ${font}, sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            // Text shadow
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+            ctx.shadowBlur = size * 0.15;
+            ctx.shadowOffsetX = 2;
+            ctx.shadowOffsetY = 2;
+
+            ctx.fillStyle = color;
+            ctx.fillText(text, x, y);
+
+            ctx.restore();
+        }
+
+        // ============ Logo Overlay ============
+        function drawLogo(ctx, canvasW, canvasH) {
+            if (!logoImage) return;
+
+            const size = parseInt(document.getElementById('logo-size').value);
+            const aspect = logoImage.width / logoImage.height;
+            const drawW = size * aspect;
+            const drawH = size;
+
+            const x = logoPos.x * canvasW - drawW / 2;
+            const y = logoPos.y * canvasH - drawH / 2;
+
+            ctx.save();
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+            ctx.shadowBlur = 8;
+            ctx.drawImage(logoImage, x, y, drawW, drawH);
+            ctx.restore();
+        }
+
+        // ============ Canvas Dragging ============
+        const canvas = document.getElementById('preview-canvas');
+
+        canvas.addEventListener('mousedown', (e) => {
+            if (!sourceImage) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const mx = (e.clientX - rect.left) * scaleX;
+            const my = (e.clientY - rect.top) * scaleY;
+
+            // Check which overlay was clicked (in reverse draw order)
+            if (logoEnabled && logoImage) {
+                const logoW = parseInt(document.getElementById('logo-size').value) * (logoImage.width / logoImage.height);
+                const logoH = parseInt(document.getElementById('logo-size').value);
+                const lx = logoPos.x * canvas.width - logoW / 2;
+                const ly = logoPos.y * canvas.height - logoH / 2;
+                if (mx >= lx && mx <= lx + logoW && my >= ly && my <= ly + logoH) {
+                    isDragging = 'logo';
+                    dragOffset.x = mx - logoPos.x * canvas.width;
+                    dragOffset.y = my - logoPos.y * canvas.height;
+                    return;
+                }
+            }
+
+            if (textEnabled) {
+                const textX = textPos.x * canvas.width;
+                const textY = textPos.y * canvas.height;
+                const textSize = parseInt(document.getElementById('text-size').value);
+                if (Math.abs(mx - textX) < textSize * 3 && Math.abs(my - textY) < textSize) {
+                    isDragging = 'text';
+                    dragOffset.x = mx - textX;
+                    dragOffset.y = my - textY;
+                    return;
+                }
+            }
+
+            if (compassEnabled) {
+                const compassX = compassPos.x * canvas.width;
+                const compassY = compassPos.y * canvas.height;
+                const compassR = parseInt(document.getElementById('compass-size').value) / 2;
+                const dist = Math.sqrt((mx - compassX) ** 2 + (my - compassY) ** 2);
+                if (dist < compassR * 1.2) {
+                    isDragging = 'compass';
+                    dragOffset.x = mx - compassX;
+                    dragOffset.y = my - compassY;
+                    return;
+                }
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (!isDragging || !sourceImage) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const mx = (e.clientX - rect.left) * scaleX;
+            const my = (e.clientY - rect.top) * scaleY;
+
+            const newX = (mx - dragOffset.x) / canvas.width;
+            const newY = (my - dragOffset.y) / canvas.height;
+
+            if (isDragging === 'compass') {
+                compassPos.x = Math.max(0.05, Math.min(0.95, newX));
+                compassPos.y = Math.max(0.05, Math.min(0.95, newY));
+            } else if (isDragging === 'text') {
+                textPos.x = Math.max(0.05, Math.min(0.95, newX));
+                textPos.y = Math.max(0.02, Math.min(0.98, newY));
+            } else if (isDragging === 'logo') {
+                logoPos.x = Math.max(0.05, Math.min(0.95, newX));
+                logoPos.y = Math.max(0.05, Math.min(0.95, newY));
+            }
+
+            renderCanvas();
+        });
+
+        canvas.addEventListener('mouseup', () => { isDragging = null; });
+        canvas.addEventListener('mouseleave', () => { isDragging = null; });
+
+        // Touch support
+        canvas.addEventListener('touchstart', (e) => {
+            const touch = e.touches[0];
+            canvas.dispatchEvent(new MouseEvent('mousedown', { clientX: touch.clientX, clientY: touch.clientY }));
+        }, { passive: true });
+
+        canvas.addEventListener('touchmove', (e) => {
+            if (isDragging) e.preventDefault();
+            const touch = e.touches[0];
+            canvas.dispatchEvent(new MouseEvent('mousemove', { clientX: touch.clientX, clientY: touch.clientY }));
+        }, { passive: false });
+
+        canvas.addEventListener('touchend', () => {
+            canvas.dispatchEvent(new MouseEvent('mouseup'));
+        });
+
+        // ============ Download ============
+        document.getElementById('download-btn').addEventListener('click', () => {
+            if (!sourceImage) return;
+
+            // Render at full resolution
+            renderCanvas();
+
+            const canvas = document.getElementById('preview-canvas');
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+            const link = document.createElement('a');
+            link.download = `hipmaps_styled_${timestamp}.png`;
+            link.href = canvas.toDataURL('image/png');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+
+        // ============ AI Stylize (Nano Banana) ============
+        const aiStylePrompts = {
+            'vintage-cartography': 'Redraw this map as a vintage hand-drawn cartography illustration. Use warm sepia and parchment tones, elegant calligraphic line work for roads, artistic shading for terrain, and hand-drawn coastline edges. Keep all roads, coastlines, water bodies, and venue markers in exactly the same pixel positions. Do not add any text labels. The result should look like a 19th century cartographer drew it by hand.',
+            'watercolor': 'Transform this map into a beautiful watercolor painting. Use soft, flowing washes of color — greens for land, blues for water, warm beiges for roads. Add gentle color bleeding at edges and subtle paper texture. Keep all roads, coastlines, and markers in exactly the same positions. The style should be loose and artistic but geographically accurate.',
+            'ink-drawing': 'Redraw this map as a precise black ink line drawing on white paper. Use clean, confident pen strokes for roads, stippling and cross-hatching for terrain texture, and bold outlines for coastlines and water edges. Keep all geographic features in exactly the same positions. The result should look like a skilled illustrator drew it with a fountain pen.',
+            'wine-country': 'Restyle this map with warm, earthy wine country tones — terracotta roads, olive green vegetation, rich burgundy accents, golden parchment background, and deep blue-grey water. Give it an elegant, artisanal feel like a label on a premium wine bottle. Keep all roads, coastlines, and markers in exactly the same pixel positions.',
+            'blueprint': 'Transform this map into a technical blueprint style. Use white lines and markings on a deep blue background. Roads should be clean white lines, water bodies filled with subtle grid patterns, and terrain shown with contour-style markings. Keep all features in exactly the same positions.'
+        };
+
+        // Show/hide custom prompt
+        document.getElementById('ai-style-preset').addEventListener('change', function() {
+            const wrapper = document.getElementById('ai-custom-prompt-wrapper');
+            wrapper.style.display = this.value === 'custom' ? 'block' : 'none';
+        });
+
+        // Watch for sourceImage changes to enable AI button
+        const aiObserver = setInterval(() => {
+            const aiBtn = document.getElementById('ai-stylize-btn');
+            if (sourceImage && aiBtn.disabled) {
+                aiBtn.disabled = false;
+                clearInterval(aiObserver);
+            }
+        }, 500);
+
+        let preAiImage = null; // Store pre-AI image for revert
+
+        document.getElementById('ai-stylize-btn').addEventListener('click', async () => {
+            if (!sourceImage) return;
+
+            const btn = document.getElementById('ai-stylize-btn');
+            const progress = document.getElementById('ai-progress');
+            const progressBar = document.getElementById('ai-progress-bar');
+            const statusText = document.getElementById('ai-status-text');
+            const resultActions = document.getElementById('ai-result-actions');
+
+            // Get the prompt
+            const preset = document.getElementById('ai-style-preset').value;
+            let prompt;
+            if (preset === 'custom') {
+                prompt = document.getElementById('ai-custom-prompt').value.trim();
+                if (!prompt) {
+                    alert('Please enter a custom style prompt.');
+                    return;
+                }
+                prompt += ' Keep all roads, coastlines, water bodies, and markers in exactly the same pixel positions. Do not add any text labels.';
+            } else {
+                prompt = aiStylePrompts[preset];
+            }
+
+            // Check for preserve markers
+            const preserveMarkers = document.getElementById('ai-preserve-markers').classList.contains('active');
+            if (preserveMarkers) {
+                prompt += ' Preserve any venue marker pins or icons exactly as they appear — do not alter or remove them.';
+            }
+
+            // Store current image for revert
+            const canvas = document.getElementById('preview-canvas');
+            preAiImage = new Image();
+            preAiImage.src = canvas.toDataURL('image/png');
+
+            // UI: show progress
+            btn.disabled = true;
+            btn.textContent = '⏳ Generating...';
+            progress.style.display = 'block';
+            resultActions.style.display = 'none';
+            progressBar.style.width = '10%';
+            statusText.textContent = 'Preparing image for Nano Banana...';
+
+            try {
+                // Get canvas as base64 (without the data:image/png;base64, prefix)
+                renderCanvas(); // ensure latest state
+                const dataUrl = canvas.toDataURL('image/png');
+                const base64 = dataUrl.split(',')[1];
+
+                progressBar.style.width = '25%';
+                statusText.textContent = 'Sending to Nano Banana 2 (Gemini 3.1 Flash)...';
+
+                // Determine API key — try GEMINI_API_KEY first, fall back to GOOGLE_API_KEY
+                const apiKey = (typeof GEMINI_API_KEY !== 'undefined') ? GEMINI_API_KEY : 
+                               (typeof GOOGLE_API_KEY !== 'undefined') ? GOOGLE_API_KEY : null;
+
+                if (!apiKey) {
+                    throw new Error('No API key found. Add GEMINI_API_KEY or GOOGLE_API_KEY to config.js');
+                }
+
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent?key=${apiKey}`;
+
+                const requestBody = {
+                    contents: [{
+                        parts: [
+                            {
+                                inlineData: {
+                                    mimeType: 'image/png',
+                                    data: base64
+                                }
+                            },
+                            {
+                                text: prompt
+                            }
+                        ]
+                    }],
+                    generationConfig: {
+                        responseModalities: ['IMAGE', 'TEXT'],
+                        temperature: 0.4
+                    }
+                };
+
+                progressBar.style.width = '40%';
+                statusText.textContent = 'AI is tracing the map — this may take 30-60 seconds...';
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestBody)
+                });
+
+                progressBar.style.width = '80%';
+                statusText.textContent = 'Processing AI response...';
+
+                if (!response.ok) {
+                    const errData = await response.json().catch(() => ({}));
+                    throw new Error(errData.error?.message || `API returned ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                // Find the image part in the response
+                let imageBase64 = null;
+                if (data.candidates && data.candidates[0]?.content?.parts) {
+                    for (const part of data.candidates[0].content.parts) {
+                        if (part.inlineData && part.inlineData.mimeType?.startsWith('image/')) {
+                            imageBase64 = part.inlineData.data;
+                            break;
+                        }
+                    }
+                }
+
+                if (!imageBase64) {
+                    // Check if there's a text response explaining why
+                    let textResponse = '';
+                    if (data.candidates && data.candidates[0]?.content?.parts) {
+                        for (const part of data.candidates[0].content.parts) {
+                            if (part.text) textResponse += part.text;
+                        }
+                    }
+                    throw new Error(textResponse || 'No image returned from AI. The model may not support image generation with this API key. Try using a Gemini API key from Google AI Studio.');
+                }
+
+                progressBar.style.width = '95%';
+                statusText.textContent = 'Loading styled map onto canvas...';
+
+                // Load the AI result onto the canvas
+                const aiImg = new Image();
+                aiImg.onload = () => {
+                    sourceImage = aiImg;
+
+                    // Reset CSS filters since AI already styled it
+                    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                    document.querySelector('[data-filter="original"]').classList.add('active');
+                    activeFilter = 'original';
+                    const preset = filterPresets.original;
+                    document.getElementById('brightness').value = preset.brightness;
+                    document.getElementById('contrast').value = preset.contrast;
+                    document.getElementById('saturate').value = preset.saturate;
+                    document.getElementById('hue-rotate').value = preset.hueRotate;
+                    document.getElementById('blur').value = preset.blur;
+                    document.getElementById('sepia').value = preset.sepia;
+                    updateSliderLabels();
+
+                    renderCanvas();
+
+                    progressBar.style.width = '100%';
+                    statusText.textContent = '✓ AI stylization complete!';
+                    statusText.style.color = '#34d399';
+
+                    // Show accept/reject
+                    resultActions.style.display = 'block';
+                    btn.disabled = false;
+                    btn.textContent = '🤖 Generate AI Style';
+
+                    // Update dimensions badge
+                    document.getElementById('dimensions-badge').textContent = `${aiImg.width} × ${aiImg.height}`;
+                };
+                aiImg.onerror = () => {
+                    throw new Error('Failed to load the AI-generated image.');
+                };
+                aiImg.src = `data:image/png;base64,${imageBase64}`;
+
+            } catch (err) {
+                console.error('AI Stylize error:', err);
+                progressBar.style.width = '100%';
+                progressBar.style.background = '#ef4444';
+                statusText.textContent = `⚠ Error: ${err.message}`;
+                statusText.style.color = '#ef4444';
+                btn.disabled = false;
+                btn.textContent = '🤖 Generate AI Style';
+
+                // Reset progress bar color after a delay
+                setTimeout(() => {
+                    progressBar.style.background = 'linear-gradient(90deg, #a78bfa, #F26522)';
+                    statusText.style.color = '#a78bfa';
+                }, 5000);
+            }
+        });
+
+        // Accept AI result
+        document.getElementById('ai-accept-btn')?.addEventListener('click', () => {
+            preAiImage = null; // Clear revert data
+            document.getElementById('ai-result-actions').style.display = 'none';
+            document.getElementById('ai-progress').style.display = 'none';
+            document.getElementById('ai-status-text').style.color = '#a78bfa';
+        });
+
+        // Reject / Revert
+        document.getElementById('ai-reject-btn')?.addEventListener('click', () => {
+            if (preAiImage) {
+                sourceImage = preAiImage;
+                preAiImage = null;
+                renderCanvas();
+                document.getElementById('dimensions-badge').textContent = `${sourceImage.width} × ${sourceImage.height}`;
+            }
+            document.getElementById('ai-result-actions').style.display = 'none';
+            document.getElementById('ai-progress').style.display = 'none';
+            document.getElementById('ai-status-text').style.color = '#a78bfa';
+        });
+
+        // ============ Zoom Controls ============
+        document.getElementById('zoom-fit').addEventListener('click', () => {
+            const canvas = document.getElementById('preview-canvas');
+            canvas.style.maxWidth = '100%';
+            canvas.style.maxHeight = '75vh';
+            canvas.style.width = '';
+            canvas.style.height = '';
+        });
+
+        document.getElementById('zoom-100').addEventListener('click', () => {
+            const canvas = document.getElementById('preview-canvas');
+            canvas.style.maxWidth = 'none';
+            canvas.style.maxHeight = 'none';
+            canvas.style.width = canvas.width + 'px';
+            canvas.style.height = canvas.height + 'px';
+        });
+    </script>
+    <script src="config.js" onerror="console.warn('config.js not found — AI Stylize needs GOOGLE_API_KEY')"></script>
+</body>
+
+</html>
