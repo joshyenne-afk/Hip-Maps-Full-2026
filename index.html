@@ -1275,6 +1275,97 @@ Joe's Pizza, NYC | Best deep dish in Manhattan`;
         }
 
         // ═══════════════════════════════════════════════════════════════
+        // ═══  CONFIDENCE SCORING  ═════════════════════════════════════
+        // ═══════════════════════════════════════════════════════════════
+
+        function calculateNameSimilarity(input, official) {
+            if (!input || !official) return 0;
+            const a = input.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
+            const b = official.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
+            
+            // Exact match
+            if (a === b) return 100;
+            
+            // One contains the other
+            if (b.includes(a) || a.includes(b)) return 85;
+            
+            // Word overlap
+            const aWords = a.split(/\s+/);
+            const bWords = b.split(/\s+/);
+            const matchingWords = aWords.filter(w => bWords.some(bw => bw.includes(w) || w.includes(bw)));
+            const wordScore = (matchingWords.length / Math.max(aWords.length, 1)) * 100;
+            
+            // Levenshtein-based similarity for short names
+            if (a.length < 30 && b.length < 30) {
+                const maxLen = Math.max(a.length, b.length);
+                let d = 0;
+                const matrix = Array(a.length + 1).fill(null).map(() => Array(b.length + 1).fill(0));
+                for (let i = 0; i <= a.length; i++) matrix[i][0] = i;
+                for (let j = 0; j <= b.length; j++) matrix[0][j] = j;
+                for (let i = 1; i <= a.length; i++) {
+                    for (let j = 1; j <= b.length; j++) {
+                        const cost = a[i-1] === b[j-1] ? 0 : 1;
+                        matrix[i][j] = Math.min(matrix[i-1][j] + 1, matrix[i][j-1] + 1, matrix[i-1][j-1] + cost);
+                    }
+                }
+                d = matrix[a.length][b.length];
+                const levenScore = ((maxLen - d) / maxLen) * 100;
+                return Math.max(wordScore, levenScore);
+            }
+            
+            return wordScore;
+        }
+
+        function calculateConfidence(inputName, officialName, businessStatus, place, allLocations) {
+            let score = 100;
+            const flags = [];
+
+            // 1. Name similarity (up to -40 penalty)
+            const nameSim = calculateNameSimilarity(inputName, officialName);
+            if (nameSim < 50) {
+                score -= 40;
+                flags.push(`Name mismatch: "${officialName}"`);
+            } else if (nameSim < 70) {
+                score -= 20;
+                flags.push(`Loose name match: "${officialName}"`);
+            } else if (nameSim < 85) {
+                score -= 10;
+                flags.push(`Partial name match`);
+            }
+
+            // 2. Business status (-30 for closed, -15 for suspended)
+            if (businessStatus === 'CLOSED_PERMANENTLY') {
+                score -= 30;
+                flags.push('Permanently CLOSED');
+            } else if (businessStatus === 'CLOSED_TEMPORARILY') {
+                score -= 15;
+                flags.push('Temporarily closed');
+            }
+
+            // 3. Geographic outlier check (-25 if far from cluster)
+            const validLocs = allLocations.filter(l => l.lat && l.lng);
+            if (validLocs.length >= 3 && place?.location) {
+                const centroid = getCentroid(validLocs);
+                const dist = haversineDistance(centroid.lat, centroid.lng, place.location.lat(), place.location.lng());
+                const dists = validLocs.map(l => haversineDistance(centroid.lat, centroid.lng, l.lat, l.lng));
+                const sortedDists = dists.sort((a, b) => a - b);
+                const medianDist = sortedDists[Math.floor(sortedDists.length / 2)];
+                if (dist > Math.max(medianDist * 3, 10)) {
+                    score -= 25;
+                    flags.push(`${dist.toFixed(1)}km from cluster center`);
+                }
+            }
+
+            return { score: Math.max(0, Math.min(100, score)), flags };
+        }
+
+        function getConfidenceLabel(score) {
+            if (score >= 80) return { text: 'HIGH', color: 'text-emerald-400', bg: '' };
+            if (score >= 60) return { text: 'MEDIUM', color: 'text-yellow-400', bg: 'bg-yellow-500/5' };
+            return { text: 'REVIEW', color: 'text-orange-400', bg: 'bg-orange-500/10' };
+        }
+
+        // ═══════════════════════════════════════════════════════════════
 
         async function addManualLocation() {
             const input = document.getElementById('manual-location-input');
@@ -1323,7 +1414,7 @@ Joe's Pizza, NYC | Best deep dish in Manhattan`;
                     let query = name;
                     if (searchFocus) query += ` ${searchFocus}`;
 
-                    const request = { textQuery: query, fields: ["displayName", "location", "googleMapsURI", "websiteURI"] };
+                    const request = { textQuery: query, fields: ["displayName", "location", "googleMapsURI", "websiteURI", "businessStatus"] };
 
                     try {
                         const { places } = await Place.searchByText(request);
@@ -1348,6 +1439,12 @@ Joe's Pizza, NYC | Best deep dish in Manhattan`;
                                     console.log("Could not fetch websiteURI", e);
                                 }
                             }
+
+                            // Calculate confidence score
+                            const confidence = calculateConfidence(
+                                name, place.displayName, place.businessStatus, place, locationsData
+                            );
+                            mockCsvData.confidence = confidence;
 
                             createMarker(place, mockCsvData, AdvancedMarkerElement, InfoWindow);
 
@@ -1389,6 +1486,31 @@ Joe's Pizza, NYC | Best deep dish in Manhattan`;
 
                 // NOW update ref image info since locations are populated
                 if (typeof updateRefImageInfo === 'function') updateRefImageInfo();
+
+                // ── Post-geocode confidence summary ──
+                const reviewNeeded = locationsData.filter(l => l.confidence && l.confidence.score < 60);
+                const mediumConf = locationsData.filter(l => l.confidence && l.confidence.score >= 60 && l.confidence.score < 80);
+                if (reviewNeeded.length > 0 || mediumConf.length > 0) {
+                    let summary = `📊 Confidence Report:\n`;
+                    if (reviewNeeded.length > 0) {
+                        summary += `\n⚠️ ${reviewNeeded.length} location${reviewNeeded.length > 1 ? 's' : ''} NEED REVIEW:\n`;
+                        reviewNeeded.forEach(l => {
+                            summary += `  • ${l.inputName}: ${l.confidence.flags.join(', ')}\n`;
+                        });
+                    }
+                    if (mediumConf.length > 0) {
+                        summary += `\n🟡 ${mediumConf.length} with medium confidence`;
+                    }
+                    const goodCount = locationsData.filter(l => !l.confidence || l.confidence.score >= 80).length;
+                    summary += `\n✅ ${goodCount} high confidence`;
+                    showModal(summary);
+                    console.log('Confidence Report:', locationsData.map(l => ({
+                        name: l.inputName,
+                        official: l.officialName,
+                        score: l.confidence?.score,
+                        flags: l.confidence?.flags
+                    })));
+                }
 
             } catch (error) {
                 showModal("Error initializing map components: " + error.message);
@@ -1544,7 +1666,9 @@ Joe's Pizza, NYC | Best deep dish in Manhattan`;
                 lat: place.location.lat(),
                 lng: place.location.lng(),
                 mapsLink: csvData.csvUrl || place.googleMapsURI || null,
-                website: place.websiteURI || null
+                website: place.websiteURI || null,
+                businessStatus: place.businessStatus || 'OPERATIONAL',
+                confidence: csvData.confidence || null
             };
             locationsData.push(locationEntry);
 
@@ -1594,10 +1718,29 @@ Joe's Pizza, NYC | Best deep dish in Manhattan`;
 
         // --- Build Info Window with Edit/Save Functionality ---
         function buildInfoWindowContent(locationEntry) {
-            // Removed "Get Directions" link as requested
+            const conf = locationEntry.confidence;
+            const confBadge = conf ? (() => {
+                const label = getConfidenceLabel(conf.score);
+                const flagsHtml = conf.flags.length > 0 
+                    ? `<div style="margin-top:4px;font-size:10px;color:#f97316;">${conf.flags.map(f => `⚠ ${f}`).join('<br>')}</div>` 
+                    : '';
+                return `<div style="display:inline-flex;align-items:center;gap:4px;background:${conf.score >= 80 ? '#10b98120' : conf.score >= 60 ? '#eab30820' : '#f9731620'};padding:2px 8px;border-radius:12px;font-size:10px;font-weight:600;color:${conf.score >= 80 ? '#10b981' : conf.score >= 60 ? '#eab308' : '#f97316'};margin-bottom:6px;">
+                    ${conf.score >= 80 ? '✅' : conf.score >= 60 ? '🟡' : '⚠️'} Confidence: ${conf.score}/100
+                </div>${flagsHtml}`;
+            })() : '';
+
+            const closedBadge = locationEntry.businessStatus === 'CLOSED_PERMANENTLY' 
+                ? '<span style="display:inline-block;background:#ef444420;color:#ef4444;font-size:10px;font-weight:700;padding:2px 8px;border-radius:12px;margin-bottom:4px;">🚫 PERMANENTLY CLOSED</span><br>'
+                : locationEntry.businessStatus === 'CLOSED_TEMPORARILY'
+                    ? '<span style="display:inline-block;background:#eab30820;color:#eab308;font-size:10px;font-weight:700;padding:2px 8px;border-radius:12px;margin-bottom:4px;">⏸️ TEMPORARILY CLOSED</span><br>'
+                    : '';
+
             return `
                 <div class="info-window-content" id="iw-content-${locationEntry.id}">
                     <h3>${locationEntry.officialName}</h3>
+                    ${closedBadge}
+                    ${confBadge}
+                    ${locationEntry.inputName !== locationEntry.officialName ? `<div style="font-size:10px;color:#94a3b8;margin-bottom:4px;">Searched: "${locationEntry.inputName}"</div>` : ''}
                     ${locationEntry.type ? `<span class="inline-block bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded-full mb-2 border border-gray-200">${locationEntry.type}</span>` : ''}
                     <p id="iw-desc-${locationEntry.id}">"${locationEntry.description}"</p>
                     ${locationEntry.mapsLink ? `<a href="${locationEntry.mapsLink}" target="_blank" class="text-xs text-blue-500 hover:underline block mb-1 break-all">View on Google Maps</a>` : ''}
@@ -1673,12 +1816,36 @@ Joe's Pizza, NYC | Best deep dish in Manhattan`;
             item.id = `loc-item-${index}`;
 
             const isError = !marker;
-            const baseClass = 'location-item p-2.5 rounded-xl flex justify-between items-center border-l-4 border-transparent transition-all';
-            item.className = isError ? baseClass + ' error' : baseClass;
+            const loc = locationsData.find(l => l.id === index);
+            const conf = loc?.confidence;
+            const confLabel = conf ? getConfidenceLabel(conf.score) : null;
+            const baseClass = 'location-item p-2.5 rounded-xl flex justify-between items-center border-l-4 transition-all';
+            
+            // Border color based on confidence
+            let borderClass = 'border-transparent';
+            if (isError) {
+                item.className = baseClass + ' border-red-500 error';
+            } else if (conf && conf.score < 60) {
+                item.className = baseClass + ' border-orange-500 bg-orange-500/5';
+            } else if (conf && conf.score < 80) {
+                item.className = baseClass + ' border-yellow-500/50';
+            } else {
+                item.className = baseClass + ' border-transparent';
+            }
 
-            const statusSpan = marker
-                ? '<span class="text-emerald-400 font-bold text-xs">FOUND</span>'
-                : '<span class="text-red-400 font-bold text-xs">NEEDS ATTENTION</span>';
+            // Status badge
+            let statusSpan;
+            if (!marker) {
+                statusSpan = '<span class="text-red-400 font-bold text-xs">NEEDS ATTENTION</span>';
+            } else if (conf && conf.score < 60) {
+                const flagsTitle = conf.flags.join('\n');
+                statusSpan = `<span class="text-orange-400 font-bold text-xs cursor-help" title="${flagsTitle}">⚠️ REVIEW</span>`;
+            } else if (conf && conf.score < 80) {
+                const flagsTitle = conf.flags.join('\n');
+                statusSpan = `<span class="text-yellow-400 font-bold text-xs cursor-help" title="${flagsTitle}">🟡 CHECK</span>`;
+            } else {
+                statusSpan = '<span class="text-emerald-400 font-bold text-xs">✅ FOUND</span>';
+            }
 
             item.innerHTML = `
                 <div class="flex-grow cursor-pointer" onclick="panToLocation(${index})">
