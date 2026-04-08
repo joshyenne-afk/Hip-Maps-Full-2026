@@ -1111,17 +1111,20 @@
                     const prompt = `You are an expert location extraction assistant. Analyze this image and extract ALL location names, place names, venue names, restaurant names, business names, addresses, or any identifiable geographical places.
 
 Rules:
-- Return ONLY a plain text list with one location per line
-- Do NOT include numbering, bullet points, categories, or descriptions
-- Do NOT include headers or explanatory text
-- Include the city/state/country if it's visible in context
+- Return one location per line
+- If a description, tagline, category, or short note is visible for a location, include it after a pipe character: Name | Description
+- If no description is visible, just output the name alone (no pipe)
+- Do NOT include numbering, bullet points, or headers
+- Include the city/state/country if visible in context
+- Keep descriptions concise (under 100 characters)
 - If the image has no identifiable locations, respond with exactly: NO_LOCATIONS_FOUND
 - Clean up any OCR artifacts or formatting issues
 
 Example output:
-Eiffel Tower, Paris
-The Louvre Museum
-Café de Flore, Paris`;
+Eiffel Tower, Paris | Iconic iron lattice tower, must-visit landmark
+The Louvre Museum | World's largest art museum
+Café de Flore, Paris
+Joe's Pizza, NYC | Best deep dish in Manhattan`;
 
                     const response = await fetch(apiUrl, {
                         method: 'POST',
@@ -1151,10 +1154,18 @@ Café de Flore, Paris`;
                         return;
                     }
 
-                    // Parse the response
+                    // Parse the response into structured {name, description} objects
                     ocrLocationData = text.split('\n')
                         .map(line => line.replace(/^[\d\.\-\*\•]+\s*/, '').trim())  // strip any numbering
-                        .filter(line => line.length > 0 && line.length < 200);       // sanity filter
+                        .filter(line => line.length > 0 && line.length < 300)       // sanity filter
+                        .map(line => {
+                            const pipeIdx = line.indexOf('|');
+                            if (pipeIdx > 0) {
+                                return { name: line.substring(0, pipeIdx).trim(), description: line.substring(pipeIdx + 1).trim() };
+                            }
+                            return { name: line, description: '' };
+                        })
+                        .filter(loc => loc.name.length > 0);
 
                     if (ocrLocationData.length === 0) {
                         statusDiv.classList.add('hidden');
@@ -1162,16 +1173,19 @@ Café de Flore, Paris`;
                         return;
                     }
 
-                    // Show preview
+                    // Show preview with names and descriptions
                     statusDiv.classList.add('hidden');
                     document.getElementById('ocr-count').textContent = ocrLocationData.length;
                     const listDiv = document.getElementById('ocr-preview-list');
-                    listDiv.innerHTML = ocrLocationData.map((name, i) =>
-                        `<div class="flex items-center gap-2 py-0.5"><span class="text-slate-500 font-mono w-5 text-right">${i + 1}.</span><span>${name}</span></div>`
+                    listDiv.innerHTML = ocrLocationData.map((loc, i) =>
+                        `<div class="flex items-start gap-2 py-0.5">
+                            <span class="text-slate-500 font-mono w-5 text-right flex-shrink-0">${i + 1}.</span>
+                            <div><span class="text-white">${loc.name}</span>${loc.description ? `<br><span class="text-slate-500 italic text-[10px]">${loc.description}</span>` : ''}</div>
+                        </div>`
                     ).join('');
                     previewDiv.classList.remove('hidden');
 
-                    console.log(`✓ OCR extracted ${ocrLocationData.length} locations from "${file.name}"`);
+                    console.log(`✓ OCR extracted ${ocrLocationData.length} locations from "${file.name}"`, ocrLocationData);
 
                 } catch (error) {
                     statusDiv.classList.add('hidden');
@@ -1186,12 +1200,16 @@ Café de Flore, Paris`;
         function loadOcrIntoManual() {
             if (ocrLocationData.length === 0) return;
             const textarea = document.getElementById('manual-location-input');
-            textarea.value = ocrLocationData.join('\n');
+            // Format: "Name | Description" (pipe-separated) so addManualLocation can parse it
+            textarea.value = ocrLocationData.map(loc => 
+                loc.description ? `${loc.name} | ${loc.description}` : loc.name
+            ).join('\n');
             switchImportTab('manual');
             // Flash the textarea
             textarea.classList.add('ring-2', 'ring-green-500');
             setTimeout(() => textarea.classList.remove('ring-2', 'ring-green-500'), 1500);
-            showModal(`✓ ${ocrLocationData.length} locations extracted! Click "Find Locations" to geocode them.`);
+            const descCount = ocrLocationData.filter(l => l.description).length;
+            showModal(`✓ ${ocrLocationData.length} locations extracted${descCount > 0 ? ` (${descCount} with descriptions)` : ''}! Click "Find Locations" to geocode them.`);
         }
 
         // Initialize OCR drop zone when DOM is ready
@@ -1235,7 +1253,18 @@ Café de Flore, Paris`;
 
                 const searchFocus = document.getElementById('search-focus').value.trim();
 
-                for (const name of locationNames) {
+                for (const rawEntry of locationNames) {
+                    // Parse pipe-separated format: "Name | Description"
+                    const pipeIdx = rawEntry.indexOf('|');
+                    let name, description;
+                    if (pipeIdx > 0) {
+                        name = rawEntry.substring(0, pipeIdx).trim();
+                        description = rawEntry.substring(pipeIdx + 1).trim();
+                    } else {
+                        name = rawEntry.trim();
+                        description = '';
+                    }
+
                     let query = name;
                     if (searchFocus) query += ` ${searchFocus}`;
 
@@ -1244,12 +1273,12 @@ Café de Flore, Paris`;
                     try {
                         const { places } = await Place.searchByText(request);
 
-                        // Create a mock CSV object
+                        // Create a mock CSV object with description from OCR/manual
                         const newId = locationsData.length > 0 ? Math.max(...locationsData.map(l => l.id)) + 1 : 0;
                         const mockCsvData = {
                             id: newId,
                             csvName: name,
-                            csvDescription: '', // No description for manual bulk entry
+                            csvDescription: description,
                             csvUrl: null
                         };
 
