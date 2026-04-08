@@ -984,34 +984,85 @@
                     return;
                 }
 
-                // Parse headers — find location column
+                // Parse headers — find key columns
                 const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, '').toLowerCase());
+                
                 const nameColIndex = headers.findIndex(h =>
                     h.includes('name') || h.includes('location') || h.includes('place') || h.includes('address') || h.includes('venue')
+                );
+                const descColIndex = headers.findIndex(h =>
+                    h.includes('description') || h.includes('desc') || h.includes('note') || h.includes('detail') || h.includes('info') || h.includes('about')
+                );
+                const urlColIndex = headers.findIndex(h =>
+                    h.includes('url') || h.includes('website') || h.includes('link') || h.includes('web')
+                );
+                const typeColIndex = headers.findIndex(h =>
+                    h.includes('type') || h.includes('category') || h.includes('kind')
                 );
 
                 // Fallback to first column if no name column detected
                 const colIdx = nameColIndex !== -1 ? nameColIndex : 0;
                 const usedHeader = nameColIndex !== -1 ? headers[nameColIndex] : headers[0];
 
-                // Extract locations
+                // Build a robust CSV parser for values (handles quoted commas)
+                function parseCsvLine(line) {
+                    const values = [];
+                    let current = '';
+                    let inQuotes = false;
+                    for (let i = 0; i < line.length; i++) {
+                        const c = line[i];
+                        if (c === '"') {
+                            if (inQuotes && i + 1 < line.length && line[i + 1] === '"') {
+                                current += '"';
+                                i++; // skip escaped quote
+                            } else {
+                                inQuotes = !inQuotes;
+                            }
+                        } else if (c === ',' && !inQuotes) {
+                            values.push(current.trim());
+                            current = '';
+                        } else {
+                            current += c;
+                        }
+                    }
+                    values.push(current.trim());
+                    return values;
+                }
+
+                // Extract locations with all available columns
                 sheetsLocationData = lines.slice(1).map(line => {
-                    const values = line.match(/(\".*?\"|[^",]+)(?=\s*,|\s*$)/g)?.map(v => v.trim().replace(/^"|"$/g, '')) || [];
-                    return values[colIdx] || '';
-                }).filter(name => name.length > 0);
+                    const values = parseCsvLine(line);
+                    const name = (values[colIdx] || '').replace(/^"|"$/g, '').trim();
+                    const description = descColIndex !== -1 ? (values[descColIndex] || '').replace(/^"|"$/g, '').trim() : '';
+                    const url = urlColIndex !== -1 ? (values[urlColIndex] || '').replace(/^"|"$/g, '').trim() : '';
+                    const type = typeColIndex !== -1 ? (values[typeColIndex] || '').replace(/^"|"$/g, '').trim() : '';
+                    return { name, description, url, type };
+                }).filter(loc => loc.name.length > 0);
 
                 if (sheetsLocationData.length === 0) {
                     showSheetsStatus('⚠️ No location data found in the sheet.', 'warn');
                     return;
                 }
 
-                showSheetsStatus(`✓ Found ${sheetsLocationData.length} locations in column "${usedHeader}"`, 'success');
+                // Build status message showing detected columns
+                const detectedCols = [`"${usedHeader}" (name)`];
+                if (descColIndex !== -1) detectedCols.push(`"${headers[descColIndex]}" (description)`);
+                if (urlColIndex !== -1) detectedCols.push(`"${headers[urlColIndex]}" (url)`);
+                if (typeColIndex !== -1) detectedCols.push(`"${headers[typeColIndex]}" (type)`);
+                showSheetsStatus(`✓ Found ${sheetsLocationData.length} locations — columns: ${detectedCols.join(', ')}`, 'success');
 
-                // Show preview
+                // Show preview with descriptions
                 document.getElementById('sheets-row-count').textContent = sheetsLocationData.length;
                 const listDiv = document.getElementById('sheets-preview-list');
-                listDiv.innerHTML = sheetsLocationData.slice(0, 20).map((name, i) =>
-                    `<div class="flex items-center gap-2 py-0.5"><span class="text-slate-500 font-mono w-5 text-right">${i + 1}.</span><span>${name}</span></div>`
+                listDiv.innerHTML = sheetsLocationData.slice(0, 20).map((loc, i) =>
+                    `<div class="flex items-start gap-2 py-0.5">
+                        <span class="text-slate-500 font-mono w-5 text-right flex-shrink-0">${i + 1}.</span>
+                        <div>
+                            <span class="text-white">${loc.name}</span>
+                            ${loc.description ? `<br><span class="text-slate-500 italic text-[10px]">${loc.description}</span>` : ''}
+                            ${loc.url ? `<br><span class="text-blue-400/60 text-[10px]">🔗 ${loc.url.substring(0, 40)}${loc.url.length > 40 ? '...' : ''}</span>` : ''}
+                        </div>
+                    </div>`
                 ).join('') + (sheetsLocationData.length > 20 ? `<div class="text-slate-500 italic mt-1">...and ${sheetsLocationData.length - 20} more</div>` : '');
                 previewDiv.classList.remove('hidden');
 
@@ -1040,12 +1091,16 @@
         function loadSheetsIntoManual() {
             if (sheetsLocationData.length === 0) return;
             const textarea = document.getElementById('manual-location-input');
-            textarea.value = sheetsLocationData.join('\n');
+            // Format: "Name | Description" (pipe-separated) so addManualLocation can parse descriptions
+            textarea.value = sheetsLocationData.map(loc => 
+                loc.description ? `${loc.name} | ${loc.description}` : loc.name
+            ).join('\n');
             switchImportTab('manual');
             // Flash the textarea
             textarea.classList.add('ring-2', 'ring-green-500');
             setTimeout(() => textarea.classList.remove('ring-2', 'ring-green-500'), 1500);
-            showModal(`✓ ${sheetsLocationData.length} locations loaded! Click "Find Locations" to geocode them.`);
+            const descCount = sheetsLocationData.filter(l => l.description).length;
+            showModal(`✓ ${sheetsLocationData.length} locations loaded${descCount > 0 ? ` (${descCount} with descriptions)` : ''}! Click "Find Locations" to geocode them.`);
         }
 
         // ── Image OCR Import ──────────────────────────────────────────
