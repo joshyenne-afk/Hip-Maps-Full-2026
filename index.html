@@ -370,7 +370,12 @@
                         </div>
 
                         <!-- Import Method Tabs -->
-                        <div class="flex gap-2 mb-3">
+                        <div class="flex gap-2 mb-3 overflow-x-auto pb-1 custom-scrollbar">
+                            <button onclick="switchImportTab('website')" id="tab-website"
+                                class="import-tab flex-1 whitespace-nowrap flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:bg-white/10">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 0 1-9 9m9-9a9 9 0 0 0-9-9m9 9H3m9 9a9 9 0 0 1-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 0 1 9-9"/></svg>
+                                Website
+                            </button>
                             <button onclick="switchImportTab('sheets')" id="tab-sheets"
                                 class="import-tab flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:bg-white/10">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>
@@ -386,6 +391,23 @@
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
                                 Manual
                             </button>
+                        </div>
+
+                        <!-- ── Website URL Import ── -->
+                        <div id="import-website" class="import-panel hidden space-y-3">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-300 mb-1">Website URL</label>
+                                <div class="flex gap-2">
+                                    <input type="url" id="website-url-input" placeholder="https://example.com/directory"
+                                        class="flex-1 px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all text-sm text-white placeholder-slate-500">
+                                    <button id="website-import-btn" onclick="importFromWebsite()"
+                                        class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded-xl transition-all flex items-center gap-1.5 shadow-md">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 1 1-6.219-8.56"/><path d="M21 3v5h-5"/></svg>
+                                        Extract
+                                    </button>
+                                </div>
+                                <p class="text-xs text-slate-500 mt-1.5">Paste a website link containing a list of places (like a member directory, article, or venue list). Our AI will extract the locations for you.</p>
+                            </div>
                         </div>
 
                         <!-- ── Google Sheets Import ── -->
@@ -906,7 +928,7 @@
             document.getElementById('start-over-btn').classList.remove('hidden');
 
             // Update reference image info with bounds
-            if (typeof updateRefImageInfo === 'function') updateRefImageInfo();
+if (typeof updateRefImageInfo === 'function') updateRefImageInfo();
         }
 
         // ═══════════════════════════════════════════════════════════════
@@ -917,20 +939,109 @@
         let ocrLocationData = [];     // cached from OCR
 
         function switchImportTab(tab) {
-            // Hide all panels
-            document.querySelectorAll('.import-panel').forEach(p => p.classList.add('hidden'));
-            // Reset all tabs
-            document.querySelectorAll('.import-tab').forEach(t => {
-                t.classList.remove('bg-[#F26522]/15', 'border-[#F26522]/30', 'text-[#F26522]');
-                t.classList.add('bg-white/5', 'border-white/10', 'text-slate-400');
+            const panels = ['sheets', 'image', 'manual', 'website'];
+            const tabs = ['sheets', 'image', 'manual', 'website'];
+
+            tabs.forEach(t => {
+                const btn = document.getElementById(`tab-${t}`);
+                if (btn) {
+                    btn.classList.remove('bg-[#F26522]/15', 'border-[#F26522]/30', 'text-[#F26522]');
+                    btn.classList.add('bg-white/5', 'border-white/10', 'text-slate-400');
+                }
             });
-            // Show selected panel and highlight tab
-            const panel = document.getElementById(`import-${tab}`);
-            const tabBtn = document.getElementById(`tab-${tab}`);
-            if (panel) panel.classList.remove('hidden');
-            if (tabBtn) {
-                tabBtn.classList.remove('bg-white/5', 'border-white/10', 'text-slate-400');
-                tabBtn.classList.add('bg-[#F26522]/15', 'border-[#F26522]/30', 'text-[#F26522]');
+
+            const activeBtn = document.getElementById(`tab-${tab}`);
+            if (activeBtn) {
+                activeBtn.classList.remove('bg-white/5', 'border-white/10', 'text-slate-400');
+                activeBtn.classList.add('bg-[#F26522]/15', 'border-[#F26522]/30', 'text-[#F26522]');
+            }
+
+            panels.forEach(p => {
+                const panel = document.getElementById(`import-${p}`);
+                if (panel) {
+                    if (p === tab) panel.classList.remove('hidden');
+                    else panel.classList.add('hidden');
+                }
+            });
+        }
+
+        // --- Website URL Import ---
+        async function importFromWebsite() {
+            const urlInput = document.getElementById('website-url-input');
+            const url = urlInput.value.trim();
+            if (!url) return;
+
+            const btn = document.getElementById('website-import-btn');
+            btn.innerHTML = '<div class="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div> Scanning';
+            btn.disabled = true;
+
+            const apiKey = window.CONFIG.GEMINI_API_KEY;
+
+            try {
+                // 1. Fetch text via proxy
+                const proxyResp = await fetch('http://localhost:8080/scrape', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: url })
+                });
+
+                if (!proxyResp.ok) throw new Error('Could not fetch website content');
+                const data = await proxyResp.json();
+                
+                // 2. Ask Gemini to extract locations
+                const prompt = `Extract all places, venues, or locations mentioned in this text along with their descriptions (if any).
+Respond with ONE location per line. 
+If there's a description, separate it using a " | " pipe character. Do not use quotes around the place name.
+If there is no description, just list the name.
+
+Example Format:
+Joe's Pizza | Best local slice in town featuring classic new york style.
+Central Park
+The Art Museum | Featuring modern and contemporary works.
+
+Text from ${url}:
+${data.text}`;
+
+                const apiCall = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [{ text: prompt }]
+                        }]
+                    })
+                });
+
+                const result = await apiCall.json();
+                if (result.candidates && result.candidates[0].content.parts[0].text) {
+                    let extracted = result.candidates[0].content.parts[0].text;
+                    
+                    // Switch to manual tab and set contents
+                    const manualBox = document.getElementById('manual-location-input');
+                    const existingEmpty = manualBox.value.trim() === '';
+                    
+                    if (existingEmpty) {
+                        manualBox.value = extracted;
+                    } else {
+                        manualBox.value = manualBox.value + '\n' + extracted;
+                    }
+                    
+                    switchImportTab('manual');
+                    
+                    // Flash manual tab to show it worked
+                    const activeTab = document.getElementById('tab-manual');
+                    activeTab.style.transform = 'scale(1.05)';
+                    setTimeout(() => activeTab.style.transform = 'none', 200);
+                } else {
+                    throw new Error('Gemini could not find locations');
+                }
+
+            } catch (err) {
+                console.error('Website extract error:', err);
+                alert('Error extracting from website: ' + err.message);
+            } finally {
+                btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 1 1-6.219-8.56"/><path d="M21 3v5h-5"/></svg> Extract';
+                btn.disabled = false;
             }
         }
 

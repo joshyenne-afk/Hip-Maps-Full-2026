@@ -6,6 +6,7 @@ import urllib.request
 import urllib.parse
 import json
 import os
+import re
 import base64
 import subprocess
 import shutil
@@ -46,6 +47,8 @@ class HipMapsHandler(http.server.SimpleHTTPRequestHandler):
     def do_POST(self):
         if self.path == '/generate-tiles':
             self.handle_generate_tiles()
+        elif self.path == '/scrape':
+            self.handle_scrape()
         else:
             self.send_error(404, 'Not Found')
 
@@ -89,6 +92,61 @@ class HipMapsHandler(http.server.SimpleHTTPRequestHandler):
             self.send_error(e.code, f'Upstream error: {e.reason}')
         except Exception as e:
             self.send_error(500, f'Proxy error: {str(e)}')
+
+    def handle_scrape(self):
+        """Fetch any URL and return its text content for AI processing."""
+        try:
+            content_length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(content_length)
+            data = json.loads(body)
+            url = data.get('url', '').strip()
+
+            if not url:
+                self.send_error(400, 'Missing url')
+                return
+
+            if not url.startswith(('http://', 'https://')):
+                url = 'https://' + url
+
+            req = urllib.request.Request(url)
+            req.add_header('User-Agent', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
+            req.add_header('Accept', 'text/html,application/xhtml+xml,*/*')
+
+            with urllib.request.urlopen(req, timeout=20) as resp:
+                html = resp.read().decode('utf-8', errors='ignore')
+
+            # Strip script, style, and nav tags
+            html = re.sub(r'<script[^>]*>.*?</script>', '', html, flags=re.DOTALL | re.IGNORECASE)
+            html = re.sub(r'<style[^>]*>.*?</style>', '', html, flags=re.DOTALL | re.IGNORECASE)
+            html = re.sub(r'<nav[^>]*>.*?</nav>', '', html, flags=re.DOTALL | re.IGNORECASE)
+            html = re.sub(r'<footer[^>]*>.*?</footer>', '', html, flags=re.DOTALL | re.IGNORECASE)
+            html = re.sub(r'<header[^>]*>.*?</header>', '', html, flags=re.DOTALL | re.IGNORECASE)
+            # Strip all remaining HTML tags
+            text = re.sub(r'<[^>]+>', ' ', html)
+            # Collapse whitespace
+            text = re.sub(r'\s+', ' ', text).strip()
+            # Limit to ~30k chars to stay within Gemini context
+            text = text[:30000]
+
+            result = json.dumps({'url': url, 'text': text, 'length': len(text)})
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Content-Length', str(len(result)))
+            self.end_headers()
+            self.wfile.write(result.encode())
+
+        except urllib.error.HTTPError as e:
+            error = json.dumps({'error': f'HTTP {e.code}: {e.reason}'})
+            self.send_response(e.code)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(error.encode())
+        except Exception as e:
+            error = json.dumps({'error': str(e)})
+            self.send_response(500)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(error.encode())
 
     def handle_tile_status(self):
         """Return current tile generation status as JSON."""
@@ -307,6 +365,7 @@ if __name__ == '__main__':
     with http.server.HTTPServer(('', PORT), HipMapsHandler) as httpd:
         print(f'🗺️  HipMaps Full 2026 server at http://localhost:{PORT}')
         print(f'   Proxy:  http://localhost:{PORT}/proxy?url=<encoded_url>')
+        print(f'   Scrape: POST http://localhost:{PORT}/scrape')
         print(f'   Tiles:  POST http://localhost:{PORT}/generate-tiles')
         print(f'   Status: http://localhost:{PORT}/tile-status')
         httpd.serve_forever()
