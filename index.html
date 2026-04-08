@@ -362,15 +362,102 @@
                                 area.</p>
                         </div>
 
-                        <!-- Manual Entry Section -->
+                        <!-- ═══ IMPORT OPTIONS TABS ═══ -->
                         <div class="relative flex py-5 items-center">
                             <div class="flex-grow border-t border-white/10"></div>
-                            <span class="flex-shrink-0 mx-4 text-slate-500 text-xs uppercase font-semibold">OR Manually
-                                Enter</span>
+                            <span class="flex-shrink-0 mx-4 text-slate-500 text-xs uppercase font-semibold">OR Import From</span>
                             <div class="flex-grow border-t border-white/10"></div>
                         </div>
 
-                        <div class="space-y-3">
+                        <!-- Import Method Tabs -->
+                        <div class="flex gap-2 mb-3">
+                            <button onclick="switchImportTab('sheets')" id="tab-sheets"
+                                class="import-tab flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:bg-white/10">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>
+                                Google Sheet
+                            </button>
+                            <button onclick="switchImportTab('image')" id="tab-image"
+                                class="import-tab flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:bg-white/10">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+                                Image OCR
+                            </button>
+                            <button onclick="switchImportTab('manual')" id="tab-manual"
+                                class="import-tab active flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all bg-[#F26522]/15 border border-[#F26522]/30 text-[#F26522]">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                                Manual
+                            </button>
+                        </div>
+
+                        <!-- ── Google Sheets Import ── -->
+                        <div id="import-sheets" class="import-panel hidden space-y-3">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-300 mb-1">Google Sheets URL</label>
+                                <div class="flex gap-2">
+                                    <input type="url" id="sheets-url-input" placeholder="https://docs.google.com/spreadsheets/d/..."
+                                        class="flex-1 px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all text-sm text-white placeholder-slate-500">
+                                    <button id="sheets-import-btn" onclick="importFromGoogleSheet()"
+                                        class="px-4 py-2 bg-green-600 hover:bg-green-500 text-white text-sm font-semibold rounded-xl transition-all flex items-center gap-1.5 shadow-md">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 1 1-6.219-8.56"/><path d="M21 3v5h-5"/></svg>
+                                        Fetch
+                                    </button>
+                                </div>
+                                <p class="text-xs text-slate-500 mt-1.5">Paste a Google Sheets link. Sheet must be <strong class="text-slate-400">shared</strong> (public or "Anyone with the link").</p>
+                                <div id="sheets-status" class="hidden mt-2 text-xs px-3 py-2 rounded-lg"></div>
+                            </div>
+
+                            <!-- Column Preview (shown after fetch) -->
+                            <div id="sheets-preview" class="hidden bg-white/5 rounded-xl p-3 border border-white/10">
+                                <p class="text-xs text-slate-400 mb-2 font-semibold">📋 Preview — <span id="sheets-row-count">0</span> locations found</p>
+                                <div id="sheets-preview-list" class="max-h-32 overflow-y-auto text-xs text-slate-300 space-y-0.5 custom-scrollbar"></div>
+                                <button onclick="loadSheetsIntoManual()" class="mt-2 w-full py-1.5 bg-[#F26522]/15 text-[#F26522] text-xs font-semibold rounded-lg hover:bg-[#F26522]/25 transition-all border border-[#F26522]/20">
+                                    ✓ Load These Locations
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- ── Image OCR Import ── -->
+                        <div id="import-image" class="import-panel hidden space-y-3">
+                            <div id="ocr-drop-zone"
+                                class="w-full h-32 flex flex-col items-center justify-center text-slate-400 cursor-pointer group border-2 border-dashed border-white/10 rounded-xl hover:border-[#F26522]/40 transition-all">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                                    stroke="currentColor"
+                                    class="w-8 h-8 mb-2 text-slate-500 group-hover:text-[#F26522] transition-colors">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0 0 22.5 18.75V5.25a2.25 2.25 0 0 0-2.25-2.25H3.75A2.25 2.25 0 0 0 1.5 5.25v13.5A2.25 2.25 0 0 0 3.75 21Z" />
+                                </svg>
+                                <p class="font-medium text-sm text-slate-300 group-hover:text-[#F26522] transition-colors">Drop image or click to browse</p>
+                                <p class="text-xs mt-0.5 text-slate-500">Screenshot, flyer, menu, or any list of places</p>
+                                <input type="file" id="ocr-file-input" accept="image/*" class="hidden">
+                            </div>
+
+                            <!-- OCR Status -->
+                            <div id="ocr-status" class="hidden">
+                                <div class="flex items-center gap-2 text-xs bg-purple-500/10 text-purple-300 px-3 py-2 rounded-lg border border-purple-500/20">
+                                    <div class="w-3 h-3 border-2 border-purple-400 border-t-transparent rounded-full animate-spin"></div>
+                                    <span id="ocr-status-text">Analyzing image with Gemini AI...</span>
+                                </div>
+                            </div>
+
+                            <!-- OCR Preview -->
+                            <div id="ocr-preview" class="hidden bg-white/5 rounded-xl p-3 border border-white/10">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <img id="ocr-thumb" class="w-10 h-10 rounded-lg object-cover border border-white/10" src="" alt="">
+                                    <div>
+                                        <p class="text-xs text-slate-400 font-semibold">🧠 AI Extracted — <span id="ocr-count">0</span> locations</p>
+                                        <p class="text-xs text-slate-500" id="ocr-file-name"></p>
+                                    </div>
+                                </div>
+                                <div id="ocr-preview-list" class="max-h-32 overflow-y-auto text-xs text-slate-300 space-y-0.5 custom-scrollbar"></div>
+                                <button onclick="loadOcrIntoManual()" class="mt-2 w-full py-1.5 bg-[#F26522]/15 text-[#F26522] text-xs font-semibold rounded-lg hover:bg-[#F26522]/25 transition-all border border-[#F26522]/20">
+                                    ✓ Load These Locations
+                                </button>
+                            </div>
+
+                            <p class="text-xs text-slate-500">Powered by <strong class="text-slate-400">Gemini 3 Flash</strong> vision. Works with screenshots, printed lists, flyers, menus, and more.</p>
+                        </div>
+
+                        <!-- ── Manual Entry (default visible) ── -->
+                        <div id="import-manual" class="import-panel space-y-3">
                             <div>
                                 <label for="manual-location-input"
                                     class="block text-sm font-medium text-slate-300 mb-1">Enter Locations</label>
@@ -424,7 +511,7 @@
                                     <polyline points="2 17 12 22 22 17"></polyline>
                                     <polyline points="2 12 12 17 22 12"></polyline>
                                 </svg>
-                                Map Overlay
+                                Verify Capture Overlay
                             </h3>
                             <label class="relative inline-flex items-center cursor-pointer">
                                 <input type="checkbox" id="toggle-overlay" class="sr-only peer">
@@ -477,30 +564,41 @@
                         </button>
                     </div>
 
-                    <!-- ── Georef Bounds (collapsible) ── -->
-                    <details class="bg-white/5 rounded-xl p-3 mb-3 border border-white/10 mt-4">
-                        <summary class="text-xs font-bold text-slate-300 cursor-pointer select-none">📐 Georef Bounds</summary>
+                    <!-- ── Georef Bounds (Live Viewport) ── -->
+                    <details class="bg-white/5 rounded-xl p-3 mb-3 border border-white/10 mt-4" open>
+                        <summary class="text-xs font-bold text-slate-300 cursor-pointer select-none">📐 Live Capture Bounds</summary>
                         <div id="ref-image-info" class="mt-2 text-xs">
-                            <div class="flex justify-between items-center mb-1">
-                                <span class="text-slate-400">Points:</span>
-                                <span id="ref-point-count" class="font-bold text-primary">0 / 0</span>
+                            <div class="font-mono text-slate-300 text-[10px] mb-2">
+                                <div class="flex justify-between"><span>North:</span> <span id="ref-north" class="text-primary font-bold">--</span></div>
+                                <div class="flex justify-between"><span>South:</span> <span id="ref-south" class="text-primary font-bold">--</span></div>
+                                <div class="flex justify-between"><span>East:</span> <span id="ref-east" class="text-primary font-bold">--</span></div>
+                                <div class="flex justify-between"><span>West:</span> <span id="ref-west" class="text-primary font-bold">--</span></div>
                             </div>
-                            <details class="mb-2">
-                                <summary class="cursor-pointer text-[#F26522] hover:underline text-[10px] font-medium">⚙️ Select points</summary>
-                                <div id="bounds-point-list" class="mt-2 max-h-32 overflow-y-auto space-y-1 bg-white/5 rounded-lg p-2 border border-white/10 custom-scrollbar"></div>
-                                <div class="flex gap-2 mt-2">
-                                    <button type="button" onclick="selectAllBoundsPoints(true)" class="text-[10px] px-2 py-1 bg-white/10 text-slate-300 rounded hover:bg-white/15">All</button>
-                                    <button type="button" onclick="selectAllBoundsPoints(false)" class="text-[10px] px-2 py-1 bg-white/10 text-slate-300 rounded hover:bg-white/15">None</button>
-                                    <button type="button" onclick="autoExcludeOutliers()" class="text-[10px] px-2 py-1 bg-orange-500/15 text-orange-400 rounded hover:bg-orange-500/25">Auto-exclude</button>
-                                </div>
-                            </details>
-                            <div class="font-mono text-slate-300 text-[10px] mb-1 pt-1 border-t border-white/10">
-                                <div>N: <span id="ref-north">--</span>° | S: <span id="ref-south">--</span>°</div>
-                                <div>E: <span id="ref-east">--</span>° | W: <span id="ref-west">--</span>°</div>
+                            
+                            <div class="flex justify-between items-center text-[10px]"><span class="text-slate-400">Viewport Aspect:</span><span id="ref-aspect" class="font-bold text-[#F26522]">--</span></div>
+                            <div class="flex justify-between items-center mt-0.5 text-[10px]"><span class="text-slate-400">Capture Output:</span><span id="ref-size" class="font-mono text-slate-300">1280 × 1280 px</span></div>
+                            
+                            <div class="mt-3 pt-2 border-t border-white/10">
+                                <details>
+                                    <summary class="cursor-pointer text-slate-400 hover:text-white text-[10px] font-medium flex items-center gap-1">
+                                        🎯 Fit View to Points
+                                    </summary>
+                                    <div class="flex justify-between items-center my-1">
+                                        <span class="text-slate-500 text-[9px]">Included:</span>
+                                        <span id="ref-point-count" class="font-bold text-slate-300">0 / 0</span>
+                                    </div>
+                                    <div id="bounds-point-list" class="mt-1 max-h-24 overflow-y-auto space-y-1 bg-black/20 rounded-lg p-2 border border-white/5 custom-scrollbar"></div>
+                                    <div class="flex gap-2 mt-2">
+                                        <button type="button" onclick="selectAllBoundsPoints(true)" class="text-[9px] px-2 py-0.5 bg-white/10 text-slate-300 rounded hover:bg-white/15">All</button>
+                                        <button type="button" onclick="selectAllBoundsPoints(false)" class="text-[9px] px-2 py-0.5 bg-white/10 text-slate-300 rounded hover:bg-white/15">None</button>
+                                        <button type="button" onclick="autoExcludeOutliers()" class="text-[9px] px-2 py-0.5 bg-orange-500/15 text-orange-400 rounded hover:bg-orange-500/25">Auto-exclude</button>
+                                    </div>
+                                    <button type="button" onclick="fitMapToSelectedPoints()" class="w-full mt-2 py-1 bg-primary/20 text-primary text-[10px] font-bold rounded hover:bg-primary/30 transition-colors">
+                                        Apply Fit to Map
+                                    </button>
+                                </details>
                             </div>
-                            <div class="flex justify-between items-center"><span class="text-slate-400">Aspect:</span><span id="ref-aspect" class="font-bold text-[#F26522]">--</span></div>
-                            <div class="flex justify-between items-center mt-0.5"><span class="text-slate-400">Size:</span><span id="ref-size" class="font-mono text-slate-300">-- × --</span></div>
-                            <div id="bounds-warning" class="hidden mt-2 p-2 bg-yellow-500/10 border border-yellow-500/20 rounded text-yellow-300 text-[10px]">⚠️ Large spread. Exclude outliers.</div>
+                            <div id="bounds-warning" class="hidden mt-2 p-2 bg-yellow-500/10 border border-yellow-500/20 rounded text-yellow-300 text-[10px]">⚠️ Large spread. View might be too wide.</div>
                         </div>
                     </details>
 
@@ -565,6 +663,9 @@
                 mapTypeId: 'roadmap' // Changed to roadmap as requested
             });
 
+            // Update live bounds when map moves
+            map.addListener('idle', updateLiveViewportInfo);
+
             // --- Overlay Init ---
             document.getElementById('toggle-overlay').addEventListener('change', toggleOverlay);
             document.getElementById('overlay-opacity').addEventListener('input', updateOverlayOpacity);
@@ -583,47 +684,76 @@
         }
 
         function loadTiles() {
-            // Default assumes local tiles folder
-            const urlPattern = "tiles/{z}/{x}/{y}.png";
-            const opacityVal = document.getElementById('overlay-opacity').value / 100;
-
-            try {
-                tileOverlay = new google.maps.ImageMapType({
-                    getTileUrl: function (coord, zoom) {
-                        return urlPattern
-                            .replace('{z}', zoom)
-                            .replace('{x}', coord.x)
-                            .replace('{y}', coord.y);
-                    },
-                    tileSize: new google.maps.Size(256, 256),
-                    opacity: opacityVal,
-                    name: 'HipMaps Tiles'
-                });
-                // We do NOT push to map.overlayMapTypes yet. Wait for toggle.
-            } catch (e) {
-                console.error("Error creating tile overlay:", e);
-            }
+            // This was the old tile-based overlay. Now handled via GroundOverlay
+            // from the captured map image. See toggleOverlay().
         }
+
+        let groundOverlayObj = null;
+        let capturedImageDataUrl = null;
+        let capturedBoundsObj = null;
+        let lastCaptureBounds = null; // Store bounds when we hit CAPTURE
 
         function toggleOverlay(e) {
             const isChecked = e.target.checked;
             const settingsDiv = document.getElementById('overlay-settings');
 
             if (isChecked) {
-                if (!tileOverlay) loadTiles();
-                map.overlayMapTypes.push(tileOverlay);
+                // Get the captured image from the preview (if capture has happened)
+                const previewImg = document.getElementById('capture-preview-img');
+                const imgSrc = previewImg ? previewImg.src : null;
+
+                if (!imgSrc || imgSrc === 'data:,' || !imgSrc.startsWith('data:')) {
+                    alert('Capture a map image first (Step 2b) before verifying the overlay.');
+                    e.target.checked = false;
+                    return;
+                }
+
+                capturedImageDataUrl = imgSrc;
+
+                // Use the bounds from when we actually captured the image
+                if (!lastCaptureBounds) {
+                    alert('Original capture bounds lost. Try capturing again.');
+                    e.target.checked = false;
+                    return;
+                }
+
+                capturedBoundsObj = new google.maps.LatLngBounds(
+                    { lat: lastCaptureBounds.south, lng: lastCaptureBounds.west },
+                    { lat: lastCaptureBounds.north, lng: lastCaptureBounds.east }
+                );
+
+                // Remove old overlay if exists
+                if (groundOverlayObj) {
+                    groundOverlayObj.setMap(null);
+                    groundOverlayObj = null;
+                }
+
+                // Create GroundOverlay from captured image
+                const opacityVal = document.getElementById('overlay-opacity').value / 100;
+                groundOverlayObj = new google.maps.GroundOverlay(
+                    capturedImageDataUrl,
+                    capturedBoundsObj,
+                    { opacity: opacityVal, clickable: false }
+                );
+                groundOverlayObj.setMap(map);
+
                 settingsDiv.classList.remove('opacity-50', 'pointer-events-none');
+                console.log('✓ Map overlay ON — captured image shown as GroundOverlay');
             } else {
-                map.overlayMapTypes.clear();
+                if (groundOverlayObj) {
+                    groundOverlayObj.setMap(null);
+                    groundOverlayObj = null;
+                }
                 settingsDiv.classList.add('opacity-50', 'pointer-events-none');
+                console.log('✓ Map overlay OFF');
             }
         }
 
         function updateOverlayOpacity(e) {
             const val = e.target.value;
             document.getElementById('opacity-value').textContent = val + '%';
-            if (tileOverlay) {
-                tileOverlay.setOpacity(val / 100);
+            if (groundOverlayObj) {
+                groundOverlayObj.setOpacity(val / 100);
             }
         }
 
@@ -778,6 +908,300 @@
             // Update reference image info with bounds
             if (typeof updateRefImageInfo === 'function') updateRefImageInfo();
         }
+
+        // ═══════════════════════════════════════════════════════════════
+        // ═══  IMPORT TABS + GOOGLE SHEETS + IMAGE OCR  ═══════════════
+        // ═══════════════════════════════════════════════════════════════
+
+        let sheetsLocationData = [];  // cached from fetch
+        let ocrLocationData = [];     // cached from OCR
+
+        function switchImportTab(tab) {
+            // Hide all panels
+            document.querySelectorAll('.import-panel').forEach(p => p.classList.add('hidden'));
+            // Reset all tabs
+            document.querySelectorAll('.import-tab').forEach(t => {
+                t.classList.remove('bg-[#F26522]/15', 'border-[#F26522]/30', 'text-[#F26522]');
+                t.classList.add('bg-white/5', 'border-white/10', 'text-slate-400');
+            });
+            // Show selected panel and highlight tab
+            const panel = document.getElementById(`import-${tab}`);
+            const tabBtn = document.getElementById(`tab-${tab}`);
+            if (panel) panel.classList.remove('hidden');
+            if (tabBtn) {
+                tabBtn.classList.remove('bg-white/5', 'border-white/10', 'text-slate-400');
+                tabBtn.classList.add('bg-[#F26522]/15', 'border-[#F26522]/30', 'text-[#F26522]');
+            }
+        }
+
+        // ── Google Sheets Import ──────────────────────────────────────
+
+        async function importFromGoogleSheet() {
+            const urlInput = document.getElementById('sheets-url-input');
+            const statusDiv = document.getElementById('sheets-status');
+            const previewDiv = document.getElementById('sheets-preview');
+            const btn = document.getElementById('sheets-import-btn');
+            const rawUrl = urlInput.value.trim();
+
+            if (!rawUrl) {
+                showSheetsStatus('⚠️ Please paste a Google Sheets URL.', 'warn');
+                return;
+            }
+
+            // Extract spreadsheet ID from various URL formats
+            const match = rawUrl.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+            if (!match) {
+                showSheetsStatus('❌ Invalid Google Sheets URL. Example: https://docs.google.com/spreadsheets/d/abc123/edit', 'error');
+                return;
+            }
+
+            const sheetId = match[1];
+            // Try to extract gid (tab) from URL, default to first sheet
+            const gidMatch = rawUrl.match(/gid=(\d+)/);
+            const gid = gidMatch ? gidMatch[1] : '0';
+
+            // Build CSV export URL
+            const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}`;
+
+            btn.disabled = true;
+            btn.innerHTML = `<div class="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Fetching...`;
+            showSheetsStatus('⏳ Fetching spreadsheet data...', 'info');
+
+            try {
+                const response = await fetch(csvUrl);
+                if (!response.ok) {
+                    if (response.status === 403 || response.status === 401) {
+                        throw new Error('Sheet is not publicly shared. Go to File → Share → "Anyone with the link" → Viewer.');
+                    }
+                    throw new Error(`HTTP ${response.status}: Could not fetch the sheet.`);
+                }
+
+                const csvText = await response.text();
+                const lines = csvText.split('\n').filter(l => l.trim());
+
+                if (lines.length < 2) {
+                    showSheetsStatus('⚠️ Sheet appears empty or has no data rows.', 'warn');
+                    return;
+                }
+
+                // Parse headers — find location column
+                const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, '').toLowerCase());
+                const nameColIndex = headers.findIndex(h =>
+                    h.includes('name') || h.includes('location') || h.includes('place') || h.includes('address') || h.includes('venue')
+                );
+
+                // Fallback to first column if no name column detected
+                const colIdx = nameColIndex !== -1 ? nameColIndex : 0;
+                const usedHeader = nameColIndex !== -1 ? headers[nameColIndex] : headers[0];
+
+                // Extract locations
+                sheetsLocationData = lines.slice(1).map(line => {
+                    const values = line.match(/(\".*?\"|[^",]+)(?=\s*,|\s*$)/g)?.map(v => v.trim().replace(/^"|"$/g, '')) || [];
+                    return values[colIdx] || '';
+                }).filter(name => name.length > 0);
+
+                if (sheetsLocationData.length === 0) {
+                    showSheetsStatus('⚠️ No location data found in the sheet.', 'warn');
+                    return;
+                }
+
+                showSheetsStatus(`✓ Found ${sheetsLocationData.length} locations in column "${usedHeader}"`, 'success');
+
+                // Show preview
+                document.getElementById('sheets-row-count').textContent = sheetsLocationData.length;
+                const listDiv = document.getElementById('sheets-preview-list');
+                listDiv.innerHTML = sheetsLocationData.slice(0, 20).map((name, i) =>
+                    `<div class="flex items-center gap-2 py-0.5"><span class="text-slate-500 font-mono w-5 text-right">${i + 1}.</span><span>${name}</span></div>`
+                ).join('') + (sheetsLocationData.length > 20 ? `<div class="text-slate-500 italic mt-1">...and ${sheetsLocationData.length - 20} more</div>` : '');
+                previewDiv.classList.remove('hidden');
+
+            } catch (error) {
+                showSheetsStatus(`❌ ${error.message}`, 'error');
+                console.error('Google Sheets import error:', error);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 1 1-6.219-8.56"/><path d="M21 3v5h-5"/></svg> Fetch`;
+            }
+        }
+
+        function showSheetsStatus(msg, type) {
+            const el = document.getElementById('sheets-status');
+            el.classList.remove('hidden');
+            const colors = {
+                info: 'bg-blue-500/10 text-blue-300 border border-blue-500/20',
+                success: 'bg-green-500/10 text-green-300 border border-green-500/20',
+                warn: 'bg-yellow-500/10 text-yellow-300 border border-yellow-500/20',
+                error: 'bg-red-500/10 text-red-300 border border-red-500/20'
+            };
+            el.className = `mt-2 text-xs px-3 py-2 rounded-lg ${colors[type] || ''}`;
+            el.textContent = msg;
+        }
+
+        function loadSheetsIntoManual() {
+            if (sheetsLocationData.length === 0) return;
+            const textarea = document.getElementById('manual-location-input');
+            textarea.value = sheetsLocationData.join('\n');
+            switchImportTab('manual');
+            // Flash the textarea
+            textarea.classList.add('ring-2', 'ring-green-500');
+            setTimeout(() => textarea.classList.remove('ring-2', 'ring-green-500'), 1500);
+            showModal(`✓ ${sheetsLocationData.length} locations loaded! Click "Find Locations" to geocode them.`);
+        }
+
+        // ── Image OCR Import ──────────────────────────────────────────
+
+        function setupOcrDropZone() {
+            const dropZone = document.getElementById('ocr-drop-zone');
+            const fileInput = document.getElementById('ocr-file-input');
+            if (!dropZone || !fileInput) return;
+
+            dropZone.addEventListener('click', () => fileInput.click());
+
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.classList.add('border-[#F26522]', 'bg-orange-500/5');
+            });
+
+            dropZone.addEventListener('dragleave', () => {
+                dropZone.classList.remove('border-[#F26522]', 'bg-orange-500/5');
+            });
+
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('border-[#F26522]', 'bg-orange-500/5');
+                const file = e.dataTransfer.files[0];
+                if (file && file.type.startsWith('image/')) {
+                    processOcrImage(file);
+                } else {
+                    showModal('Please drop an image file (PNG, JPG, etc.).');
+                }
+            });
+
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files[0]) processOcrImage(e.target.files[0]);
+            });
+        }
+
+        async function processOcrImage(file) {
+            const statusDiv = document.getElementById('ocr-status');
+            const statusText = document.getElementById('ocr-status-text');
+            const previewDiv = document.getElementById('ocr-preview');
+
+            // Show status
+            statusDiv.classList.remove('hidden');
+            previewDiv.classList.add('hidden');
+            statusText.textContent = `Analyzing "${file.name}" with Gemini AI...`;
+
+            // Show thumbnail
+            const thumb = document.getElementById('ocr-thumb');
+            const reader = new FileReader();
+
+            reader.onload = async (e) => {
+                const base64Full = e.target.result;
+                const base64Data = base64Full.split(',')[1];
+                thumb.src = base64Full;
+                document.getElementById('ocr-file-name').textContent = file.name;
+
+                try {
+                    // Determine the correct model
+                    const model = 'gemini-3-flash-preview';
+
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
+
+                    const prompt = `You are an expert location extraction assistant. Analyze this image and extract ALL location names, place names, venue names, restaurant names, business names, addresses, or any identifiable geographical places.
+
+Rules:
+- Return ONLY a plain text list with one location per line
+- Do NOT include numbering, bullet points, categories, or descriptions
+- Do NOT include headers or explanatory text
+- Include the city/state/country if it's visible in context
+- If the image has no identifiable locations, respond with exactly: NO_LOCATIONS_FOUND
+- Clean up any OCR artifacts or formatting issues
+
+Example output:
+Eiffel Tower, Paris
+The Louvre Museum
+Café de Flore, Paris`;
+
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{
+                                parts: [
+                                    { text: prompt },
+                                    { inlineData: { mimeType: file.type, data: base64Data } }
+                                ]
+                            }],
+                            generationConfig: { temperature: 0.1, maxOutputTokens: 4096 }
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const errData = await response.json().catch(() => ({}));
+                        throw new Error(errData.error?.message || `API error ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+
+                    if (!text || text === 'NO_LOCATIONS_FOUND') {
+                        statusDiv.classList.add('hidden');
+                        showModal('🤔 No locations could be identified in this image. Try a clearer screenshot or a different image.');
+                        return;
+                    }
+
+                    // Parse the response
+                    ocrLocationData = text.split('\n')
+                        .map(line => line.replace(/^[\d\.\-\*\•]+\s*/, '').trim())  // strip any numbering
+                        .filter(line => line.length > 0 && line.length < 200);       // sanity filter
+
+                    if (ocrLocationData.length === 0) {
+                        statusDiv.classList.add('hidden');
+                        showModal('No valid locations extracted. Try a different image.');
+                        return;
+                    }
+
+                    // Show preview
+                    statusDiv.classList.add('hidden');
+                    document.getElementById('ocr-count').textContent = ocrLocationData.length;
+                    const listDiv = document.getElementById('ocr-preview-list');
+                    listDiv.innerHTML = ocrLocationData.map((name, i) =>
+                        `<div class="flex items-center gap-2 py-0.5"><span class="text-slate-500 font-mono w-5 text-right">${i + 1}.</span><span>${name}</span></div>`
+                    ).join('');
+                    previewDiv.classList.remove('hidden');
+
+                    console.log(`✓ OCR extracted ${ocrLocationData.length} locations from "${file.name}"`);
+
+                } catch (error) {
+                    statusDiv.classList.add('hidden');
+                    console.error('OCR error:', error);
+                    showModal(`Image analysis error: ${error.message}`);
+                }
+            };
+
+            reader.readAsDataURL(file);
+        }
+
+        function loadOcrIntoManual() {
+            if (ocrLocationData.length === 0) return;
+            const textarea = document.getElementById('manual-location-input');
+            textarea.value = ocrLocationData.join('\n');
+            switchImportTab('manual');
+            // Flash the textarea
+            textarea.classList.add('ring-2', 'ring-green-500');
+            setTimeout(() => textarea.classList.remove('ring-2', 'ring-green-500'), 1500);
+            showModal(`✓ ${ocrLocationData.length} locations extracted! Click "Find Locations" to geocode them.`);
+        }
+
+        // Initialize OCR drop zone when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', setupOcrDropZone);
+        } else {
+            setupOcrDropZone();
+        }
+
+        // ═══════════════════════════════════════════════════════════════
 
         async function addManualLocation() {
             const input = document.getElementById('manual-location-input');
@@ -1436,63 +1860,49 @@
             return bounds;
         }
 
+        function fitMapToSelectedPoints() {
+            const bounds = getSelectedBounds();
+            if (bounds && map) {
+                map.fitBounds(bounds);
+            }
+        }
+
+        function updateLiveViewportInfo() {
+            if (!map) return;
+            const bounds = map.getBounds();
+            if (!bounds) return;
+
+            const ne = bounds.getNorthEast();
+            const sw = bounds.getSouthWest();
+
+            document.getElementById('ref-north').textContent = ne.lat().toFixed(6);
+            document.getElementById('ref-south').textContent = sw.lat().toFixed(6);
+            document.getElementById('ref-east').textContent = ne.lng().toFixed(6);
+            document.getElementById('ref-west').textContent = sw.lng().toFixed(6);
+
+            // Calculate aspect ratio accounting for latitude distortion
+            const centerLat = (ne.lat() + sw.lat()) / 2;
+            const geoWidth = Math.abs(ne.lng() - sw.lng()) * Math.cos(centerLat * Math.PI / 180);
+            const geoHeight = Math.abs(ne.lat() - sw.lat());
+            const aspect = geoWidth / geoHeight;
+            document.getElementById('ref-aspect').textContent = aspect.toFixed(3) + ':1';
+            
+            // Highlight point count within current view
+            const visibleCount = locationsData.filter(l => l.lat && l.lng && bounds.contains({lat: l.lat, lng: l.lng})).length;
+            document.getElementById('ref-point-count').textContent = `${visibleCount} / ${locationsData.filter(l=>l.lat&&l.lng).length}`;
+        }
+
         function updateRefImageInfo() {
             const validPoints = locationsData.filter(l => l.lat && l.lng);
-
-            if (validPoints.length === 0) {
-                document.getElementById('ref-image-info').classList.add('hidden');
-                return;
-            }
-
+            if (validPoints.length === 0) return;
+            
             // Initialize included points if needed
             if (boundsIncludedPoints.size === 0) {
                 validPoints.forEach(p => boundsIncludedPoints.add(p.id));
             }
 
-            // Populate point list
             populateBoundsPointList();
-
-            const bounds = getSelectedBounds();
-            if (!bounds) {
-                document.getElementById('ref-point-count').textContent = `0 / ${validPoints.length}`;
-                return;
-            }
-
-            // Update point count
-            document.getElementById('ref-point-count').textContent = `${boundsIncludedPoints.size} / ${validPoints.length}`;
-
-            const ne = bounds.getNorthEast();
-            const sw = bounds.getSouthWest();
-
-            // Add 10% buffer to bounds
-            const latBuffer = (ne.lat() - sw.lat()) * 0.10;
-            const lngBuffer = (ne.lng() - sw.lng()) * 0.10;
-
-            const north = ne.lat() + latBuffer;
-            const south = sw.lat() - latBuffer;
-            const east = ne.lng() + lngBuffer;
-            const west = sw.lng() - lngBuffer;
-
-            // Calculate aspect ratio accounting for latitude distortion
-            const centerLat = (north + south) / 2;
-            const geoWidth = Math.abs(east - west) * Math.cos(centerLat * Math.PI / 180);
-            const geoHeight = Math.abs(north - south);
-            refImageAspectRatio = geoWidth / geoHeight;
-
-            // Update UI
-            document.getElementById('ref-north').textContent = north.toFixed(5);
-            document.getElementById('ref-south').textContent = south.toFixed(5);
-            document.getElementById('ref-east').textContent = east.toFixed(5);
-            document.getElementById('ref-west').textContent = west.toFixed(5);
-            document.getElementById('ref-aspect').textContent = refImageAspectRatio.toFixed(3) + ':1';
-
-            // Calculate suggested dimensions
-            const width = 1280;
-            const height = 1280;
-            const refSizeEl = document.getElementById('ref-size');
-            if (refSizeEl) refSizeEl.textContent = `${width} × ${height} px`;
-
-            document.getElementById('ref-image-info').classList.remove('hidden');
+            updateLiveViewportInfo(); 
         }
 
         function generateReferenceImage() {
@@ -1558,14 +1968,43 @@
             staticMapUrl += '&' + styleParams;
             if (markerParams) staticMapUrl += markerParams;
 
-            // Georeferencing bounds from the current view
+            // ── Compute TRUE Static Map bounds using Mercator math ──
+            // The Static Maps API renders from center+zoom+size, NOT from
+            // the interactive viewport bounds. We must replicate Google's
+            // tile math to get pixel-accurate georef bounds.
+            function staticMapBounds(centerLat, centerLng, zoom, widthPx, heightPx) {
+                const TILE = 256;
+                const scale = Math.pow(2, zoom);
+                // World-pixel coordinates of the center
+                const centerWorldX = TILE * (0.5 + centerLng / 360);
+                const sinLat = Math.sin(centerLat * Math.PI / 180);
+                const centerWorldY = TILE * (0.5 - Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI));
+                // Half-size in world-pixels at this zoom
+                const halfW = (widthPx / 2) / scale;
+                const halfH = (heightPx / 2) / scale;
+                // Corner world-pixel coords
+                const westWorldX = centerWorldX - halfW;
+                const eastWorldX = centerWorldX + halfW;
+                const northWorldY = centerWorldY - halfH;
+                const southWorldY = centerWorldY + halfH;
+                // Convert back to lat/lng
+                const west = (westWorldX / TILE - 0.5) * 360;
+                const east = (eastWorldX / TILE - 0.5) * 360;
+                const northLatRad = Math.atan(Math.sinh(Math.PI * (1 - 2 * northWorldY / TILE)));
+                const southLatRad = Math.atan(Math.sinh(Math.PI * (1 - 2 * southWorldY / TILE)));
+                return {
+                    north: northLatRad * 180 / Math.PI,
+                    south: southLatRad * 180 / Math.PI,
+                    east: east,
+                    west: west
+                };
+            }
+
+            // Use the image pixel dimensions (before scale — Static Maps uses `size` param which is pre-scale)
+            const trueBounds = staticMapBounds(centerLat, centerLng, zoom, useWidth, useHeight);
+
             const boundsData = {
-                bounds: {
-                    north: ne.lat(),
-                    south: sw.lat(),
-                    east: ne.lng(),
-                    west: sw.lng()
-                },
+                bounds: trueBounds,
                 center: { lat: centerLat, lng: centerLng },
                 zoom: zoom,
                 imageDimensions: { width: useWidth * scale, height: useHeight * scale },
@@ -1576,6 +2015,10 @@
                 })),
                 timestamp: new Date().toISOString()
             };
+
+            // Store for overlay verification
+            lastCaptureBounds = boundsData.bounds;
+            console.log('📐 True Static Map bounds:', JSON.stringify(trueBounds, null, 2));
 
             // Fetch via local proxy to get CORS-safe image, then convert to base64
             const proxyUrl = '/proxy?url=' + encodeURIComponent(staticMapUrl);

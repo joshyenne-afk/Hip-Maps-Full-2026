@@ -7,6 +7,11 @@ tiles*/
 # Geo-referenced TIFF files (typically large)
 *.tif
 
+# Temp pipeline files
+_tmp_tile_source.png
+_tmp_tile_upscaled.png
+georeferenced.tif
+
 # API key config (do NOT commit)
 config.js
 

@@ -226,8 +226,8 @@
             const { Map } = await google.maps.importLibrary("maps");
 
             map = new Map(document.getElementById("map"), {
-                center: { lat: 38.5, lng: -122.5 },
-                zoom: 12,
+                center: { lat: 36.60, lng: -121.90 },
+                zoom: 13,
                 mapId: '655a16910df2ba15ec691449',
                 mapTypeControl: true,
                 streetViewControl: false,
@@ -244,8 +244,10 @@
             const tileUrl = urlParams.get('tiles');
             if (tileUrl) {
                 document.getElementById('tile-url').value = decodeURIComponent(tileUrl);
-                loadTiles();
             }
+
+            // Auto-load tiles on startup
+            setTimeout(() => loadTiles(), 500);
         }
 
         function loadTiles() {

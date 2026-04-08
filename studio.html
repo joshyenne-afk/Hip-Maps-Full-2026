@@ -7,7 +7,7 @@
     <title>HipMaps Studio — Artistic Map Stylizer</title>
     <link rel="icon"
         href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎨</text></svg>">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Bungee&family=Playfair+Display:wght@400;700;900&family=Lobster&family=Oswald:wght@400;600;700&family=Pacifico&family=Merriweather:wght@400;700;900&family=Anton&family=Permanent+Marker&family=Bangers&family=Abril+Fatface&family=Cinzel:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -18,7 +18,8 @@
         body {
             font-family: 'Inter', sans-serif;
             background-color: #0f172a;
-            min-height: 100vh;
+            height: 100vh;
+            overflow: hidden;
             color: #e2e8f0;
         }
 
@@ -81,9 +82,16 @@
             font-family: inherit;
         }
 
-        .btn-primary:hover {
+        .btn-primary:hover:not(:disabled) {
             transform: translateY(-1px);
             box-shadow: 0 6px 16px rgba(242, 101, 34, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            box-shadow: none;
+            filter: grayscale(0.5);
         }
 
         .btn-secondary {
@@ -254,6 +262,44 @@
             transform: translateX(16px);
         }
 
+        /* Pin type buttons */
+        .pin-type-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+            padding: 8px 4px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.04);
+            color: #94a3b8;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.6rem;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .pin-type-btn:hover {
+            background: rgba(251, 191, 36, 0.08);
+            border-color: rgba(251, 191, 36, 0.25);
+            color: #fbbf24;
+        }
+
+        .pin-type-btn.active {
+            background: rgba(251, 191, 36, 0.15);
+            border-color: rgba(251, 191, 36, 0.5);
+            color: #fbbf24;
+            box-shadow: 0 0 8px rgba(251, 191, 36, 0.15);
+        }
+
+        .pin-type-btn svg {
+            transition: transform 0.2s ease;
+        }
+
+        .pin-type-btn:hover svg {
+            transform: scale(1.15);
+        }
+
         /* Section header */
         .section-header {
             display: flex;
@@ -377,6 +423,156 @@
         .fade-in {
             animation: fadeIn 0.5s ease-out;
         }
+
+        /* Brand Kit */
+        .swatch-row {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+
+        .swatch {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            border: 2px solid rgba(255,255,255,0.12);
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .swatch:hover {
+            transform: scale(1.15);
+            border-color: #F26522;
+            box-shadow: 0 0 10px rgba(242,101,34,0.3);
+        }
+
+        .swatch.active {
+            border-color: #F26522;
+            box-shadow: 0 0 0 2px rgba(242,101,34,0.3);
+        }
+
+        .swatch .swatch-label {
+            position: absolute;
+            bottom: -16px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.55rem;
+            color: #64748b;
+            white-space: nowrap;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .swatch:hover .swatch-label {
+            opacity: 1;
+        }
+
+        .brand-font-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            font-size: 0.8rem;
+            color: #e2e8f0;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .brand-font-badge:hover {
+            background: rgba(242,101,34,0.1);
+            border-color: rgba(242,101,34,0.3);
+        }
+
+        /* Border Preview Grid */
+        .border-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+
+        .border-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 10px 6px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #cbd5e1;
+            font-family: inherit;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .border-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255,255,255,0.15);
+            transform: translateY(-1px);
+        }
+
+        .border-btn.active {
+            background: rgba(242,101,34,0.15);
+            border-color: #F26522;
+            color: #F26522;
+            box-shadow: 0 0 12px rgba(242,101,34,0.2);
+        }
+
+        .border-btn .border-icon {
+            font-size: 1.3rem;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        .shimmer-btn {
+            background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.05) 50%, transparent 100%);
+            background-size: 200% 100%;
+            animation: shimmer 2s infinite;
+        }
+
+        /* Accordion sections */
+        .accordion-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            -webkit-user-select: none;
+            user-select: none;
+            padding: 0;
+        }
+        .accordion-header:hover .accordion-chevron {
+            color: #F26522;
+        }
+        .accordion-chevron {
+            transition: transform 0.25s ease, color 0.2s;
+            color: #475569;
+            font-size: 0.85rem;
+            flex-shrink: 0;
+        }
+        .accordion-header.open .accordion-chevron {
+            transform: rotate(180deg);
+            color: #F26522;
+        }
+        .accordion-body {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.35s ease, opacity 0.25s ease;
+            opacity: 0;
+        }
+        .accordion-body.open {
+            max-height: 2000px;
+            opacity: 1;
+        }
     </style>
 </head>
 
@@ -402,10 +598,10 @@
     </div>
 
     <!-- Main Layout -->
-    <div style="max-width: 1400px; margin: 0 auto; padding: 24px; display: flex; gap: 24px; flex-wrap: wrap;">
+    <div style="max-width: 1400px; margin: 0 auto; padding: 24px; display: flex; gap: 24px; height: calc(100vh - 80px);">
 
-        <!-- Left Panel: Controls -->
-        <div style="width: 320px; flex-shrink: 0; display: flex; flex-direction: column; gap: 16px;">
+        <!-- Left Panel: Controls (scrollable) -->
+        <div style="width: 320px; flex-shrink: 0; display: flex; flex-direction: column; gap: 16px; overflow-y: auto; padding-right: 8px;">
 
             <!-- Upload -->
             <div class="glass-card" style="padding: 20px;">
@@ -427,86 +623,20 @@
                 <p id="file-info" style="font-size: 0.75rem; color: #F26522; margin-top: 8px; display: none; font-weight: 500;"></p>
             </div>
 
-            <!-- Filter Presets -->
-            <div class="glass-card" style="padding: 20px;">
-                <div class="section-header">
-                    <div class="icon" style="background: rgba(139, 92, 246, 0.15); color: #a78bfa;">✨</div>
-                    <h3>Artistic Filters</h3>
-                </div>
-                <div class="filter-grid" id="filter-grid">
-                    <button class="filter-btn active" data-filter="original" title="No filter applied">
-                        <span class="filter-icon">🖼️</span>
-                        Original
-                    </button>
-                    <button class="filter-btn" data-filter="vintage" title="Warm sepia tones with vignette">
-                        <span class="filter-icon">📜</span>
-                        Vintage
-                    </button>
-                    <button class="filter-btn" data-filter="watercolor" title="Soft blur + saturation boost">
-                        <span class="filter-icon">🎨</span>
-                        Watercolor
-                    </button>
-                    <button class="filter-btn" data-filter="ink" title="High contrast ink sketch">
-                        <span class="filter-icon">🖋️</span>
-                        Ink
-                    </button>
-                    <button class="filter-btn" data-filter="blueprint" title="Blue technical drawing style">
-                        <span class="filter-icon">📐</span>
-                        Blueprint
-                    </button>
-                    <button class="filter-btn" data-filter="satellite" title="High contrast aerial look">
-                        <span class="filter-icon">🛰️</span>
-                        Aerial
-                    </button>
-                </div>
-
-                <hr class="section-divider">
-
-                <!-- Custom Sliders -->
-                <div class="slider-group">
-                    <label><span>Brightness</span><span id="brightness-val">100%</span></label>
-                    <input type="range" id="brightness" min="20" max="200" value="100">
-                </div>
-                <div class="slider-group">
-                    <label><span>Contrast</span><span id="contrast-val">100%</span></label>
-                    <input type="range" id="contrast" min="20" max="200" value="100">
-                </div>
-                <div class="slider-group">
-                    <label><span>Saturation</span><span id="saturate-val">100%</span></label>
-                    <input type="range" id="saturate" min="0" max="300" value="100">
-                </div>
-                <div class="slider-group">
-                    <label><span>Hue Rotate</span><span id="hue-val">0°</span></label>
-                    <input type="range" id="hue-rotate" min="0" max="360" value="0">
-                </div>
-                <div class="slider-group">
-                    <label><span>Blur</span><span id="blur-val">0px</span></label>
-                    <input type="range" id="blur" min="0" max="10" value="0" step="0.5">
-                </div>
-                <div class="slider-group">
-                    <label><span>Sepia</span><span id="sepia-val">0%</span></label>
-                    <input type="range" id="sepia" min="0" max="100" value="0">
-                </div>
-
-                <button id="reset-filters" class="btn-secondary" style="width: 100%; margin-top: 4px; font-size: 0.8rem;">
-                    ↺ Reset All Filters
-                </button>
-            </div>
-
-            <!-- 🤖 AI Stylize (Nano Banana 2 / Gemini 3.1 Flash) -->
+            <!-- 🤖 AI Stylize — PRIMARY tool, always visible -->
             <div class="glass-card" style="padding: 20px;">
                 <div class="section-header">
                     <div class="icon" style="background: linear-gradient(135deg, rgba(139,92,246,0.25), rgba(242,101,34,0.25)); color: #c084fc;">🤖</div>
                     <h3>AI Stylize <span style="font-size: 0.65rem; font-weight: 400; color: #64748b; margin-left: 4px;">Nano Banana 2</span></h3>
                 </div>
                 <p style="font-size: 0.75rem; color: #64748b; margin-bottom: 12px; line-height: 1.5;">
-                    Send the current canvas to Nano Banana 2 (Gemini 3.1 Flash) for AI artistic tracing. The map geometry stays identical — only the look changes.
+                    AI artistic tracing — map geometry stays identical, only the look changes.
                 </p>
-
-                <!-- Style Presets -->
                 <div style="margin-bottom: 12px;">
                     <label style="display: block; font-size: 0.7rem; font-weight: 600; color: #94a3b8; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.6px;">Style Preset</label>
                     <select id="ai-style-preset" class="studio-select" title="AI artistic style preset">
+                        <option value="italian-villa">🇮🇹 Italian Villa Weekend</option>
+                        <option value="tuscan-trattoria">🍝 Tuscan Trattoria</option>
                         <option value="vintage-cartography">📜 Vintage Cartography</option>
                         <option value="watercolor">🎨 Watercolor Painting</option>
                         <option value="ink-drawing">🖋️ Ink Line Drawing</option>
@@ -515,54 +645,238 @@
                         <option value="custom">✏️ Custom Prompt</option>
                     </select>
                 </div>
-
-                <!-- Custom prompt (hidden by default) -->
                 <div id="ai-custom-prompt-wrapper" style="display: none; margin-bottom: 12px;">
                     <textarea id="ai-custom-prompt" class="studio-input" rows="3"
                         placeholder="Describe the artistic style you want..."
                         style="resize: vertical; min-height: 60px;"></textarea>
                 </div>
-
-                <!-- Preserve markers toggle -->
-                <div class="overlay-toggle" id="ai-preserve-markers" style="margin-bottom: 12px;" onclick="this.classList.toggle('active')">
-                    <div class="toggle-switch"></div>
-                    <div>
-                        <div style="font-size: 0.82rem; font-weight: 600;">Preserve Venue Markers</div>
-                        <div style="font-size: 0.68rem; color: #64748b;">Keep pins visible in output</div>
-                    </div>
-                </div>
-
                 <button id="ai-stylize-btn" class="btn-primary" style="width: 100%; font-size: 0.9rem; position: relative; overflow: hidden;" disabled>
                     🤖 Generate AI Style
                 </button>
-
-                <!-- Progress -->
                 <div id="ai-progress" style="display: none; margin-top: 12px;">
                     <div style="height: 4px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden;">
                         <div id="ai-progress-bar" style="height: 100%; width: 0%; background: linear-gradient(90deg, #a78bfa, #F26522); border-radius: 2px; transition: width 0.5s ease;"></div>
                     </div>
                     <p id="ai-status-text" style="font-size: 0.73rem; color: #a78bfa; margin-top: 6px; text-align: center;">Preparing image...</p>
                 </div>
-
-                <!-- Result actions (hidden until result) -->
                 <div id="ai-result-actions" style="display: none; margin-top: 10px;">
                     <div style="display: flex; gap: 8px;">
                         <button id="ai-accept-btn" class="btn-secondary" style="flex: 1; font-size: 0.8rem; background: rgba(16,185,129,0.15); border-color: rgba(16,185,129,0.3); color: #34d399;">✓ Accept</button>
                         <button id="ai-reject-btn" class="btn-secondary" style="flex: 1; font-size: 0.8rem;">✗ Revert</button>
                     </div>
                 </div>
-
                 <p style="font-size: 0.67rem; color: #475569; margin-top: 8px; text-align: center;">
                     Powered by Nano Banana 2 (Gemini 3.1 Flash) · 4K output
                 </p>
             </div>
 
-            <!-- Overlays -->
+            <!-- ✨ Artistic Filters — collapsed accordion for quick CSS tweaks -->
             <div class="glass-card" style="padding: 20px;">
-                <div class="section-header">
-                    <div class="icon" style="background: rgba(16, 185, 129, 0.15); color: #34d399;">🧭</div>
-                    <h3>Overlays</h3>
+                <div class="accordion-header" onclick="this.classList.toggle('open'); this.nextElementSibling.classList.toggle('open');">
+                    <div class="section-header" style="margin-bottom: 0; flex: 1;">
+                        <div class="icon" style="background: rgba(139, 92, 246, 0.15); color: #a78bfa;">✨</div>
+                        <h3>Artistic Filters</h3>
+                    </div>
+                    <span class="accordion-chevron">▼</span>
                 </div>
+                <div class="accordion-body">
+                    <div style="padding-top: 12px;">
+                        <div class="filter-grid" id="filter-grid">
+                            <button class="filter-btn active" data-filter="original" title="No filter applied">
+                                <span class="filter-icon">🖼️</span> Original
+                            </button>
+                            <button class="filter-btn" data-filter="vintage" title="Warm sepia tones">
+                                <span class="filter-icon">📜</span> Vintage
+                            </button>
+                            <button class="filter-btn" data-filter="watercolor" title="Soft blur + saturation">
+                                <span class="filter-icon">🎨</span> Watercolor
+                            </button>
+                            <button class="filter-btn" data-filter="ink" title="High contrast ink">
+                                <span class="filter-icon">🖋️</span> Ink
+                            </button>
+                            <button class="filter-btn" data-filter="blueprint" title="Blue technical drawing">
+                                <span class="filter-icon">📐</span> Blueprint
+                            </button>
+                            <button class="filter-btn" data-filter="satellite" title="High contrast aerial">
+                                <span class="filter-icon">🛰️</span> Aerial
+                            </button>
+                        </div>
+                        <hr class="section-divider">
+                        <div class="slider-group">
+                            <label><span>Brightness</span><span id="brightness-val">100%</span></label>
+                            <input type="range" id="brightness" min="20" max="200" value="100">
+                        </div>
+                        <div class="slider-group">
+                            <label><span>Contrast</span><span id="contrast-val">100%</span></label>
+                            <input type="range" id="contrast" min="20" max="200" value="100">
+                        </div>
+                        <div class="slider-group">
+                            <label><span>Saturation</span><span id="saturate-val">100%</span></label>
+                            <input type="range" id="saturate" min="0" max="300" value="100">
+                        </div>
+                        <div class="slider-group">
+                            <label><span>Hue Rotate</span><span id="hue-val">0°</span></label>
+                            <input type="range" id="hue-rotate" min="0" max="360" value="0">
+                        </div>
+                        <div class="slider-group">
+                            <label><span>Blur</span><span id="blur-val">0px</span></label>
+                            <input type="range" id="blur" min="0" max="10" value="0" step="0.5">
+                        </div>
+                        <div class="slider-group">
+                            <label><span>Sepia</span><span id="sepia-val">0%</span></label>
+                            <input type="range" id="sepia" min="0" max="100" value="0">
+                        </div>
+                        <button id="reset-filters" class="btn-secondary" style="width: 100%; margin-top: 4px; font-size: 0.8rem;">
+                            ↺ Reset All Filters
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 🎨 Brand Kit — collapsed accordion -->
+            <div class="glass-card" style="padding: 20px;">
+                <div class="accordion-header" onclick="this.classList.toggle('open'); this.nextElementSibling.classList.toggle('open');">
+                    <div class="section-header" style="margin-bottom: 0; flex: 1;">
+                        <div class="icon" style="background: linear-gradient(135deg, rgba(236,72,153,0.2), rgba(249,115,22,0.2)); color: #f472b6;">🎨</div>
+                        <h3>Brand Kit <span style="font-size: 0.65rem; font-weight: 400; color: #64748b; margin-left: 4px;">AI Extract</span></h3>
+                    </div>
+                    <span class="accordion-chevron">▼</span>
+                </div>
+                <div class="accordion-body">
+                    <div style="padding-top: 12px;">
+                        <p style="font-size: 0.75rem; color: #64748b; margin-bottom: 12px; line-height: 1.5;">
+                            Upload a client logo or website screenshot — Gemini extracts brand colors & suggests fonts.
+                        </p>
+                        <div id="brand-drop-zone" style="border: 2px dashed rgba(255,255,255,0.1); border-radius: 12px; padding: 16px 12px; text-align: center; cursor: pointer; transition: all 0.3s; margin-bottom: 12px;" onclick="document.getElementById('brand-file-input').click();">
+                            <span style="font-size: 1.2rem;">🏷️</span>
+                            <p style="font-size: 0.75rem; color: #94a3b8; margin-top: 4px;">Drop logo / screenshot</p>
+                            <input type="file" id="brand-file-input" accept="image/*" style="display: none;">
+                        </div>
+                        <p id="brand-file-info" style="font-size: 0.7rem; color: #f472b6; display: none; font-weight: 500;"></p>
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                            <div style="flex: 1; height: 1px; background: rgba(255,255,255,0.06);"></div>
+                            <span style="font-size: 0.65rem; color: #475569; font-weight: 600;">OR</span>
+                            <div style="flex: 1; height: 1px; background: rgba(255,255,255,0.06);"></div>
+                        </div>
+                        <input type="text" id="brand-url" class="studio-input" placeholder="https://client-website.com" style="margin-bottom: 12px;">
+                        <button id="brand-extract-btn" class="btn-primary" style="width: 100%; font-size: 0.85rem; background: linear-gradient(135deg, #ec4899, #f97316);" disabled>
+                            🎨 Extract Brand Kit
+                        </button>
+                        <div id="brand-results" style="display: none; margin-top: 16px;">
+                            <div style="font-size: 0.7rem; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 6px;">Extracted Palette</div>
+                            <div id="brand-swatches" class="swatch-row"></div>
+                            <div style="font-size: 0.7rem; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.6px; margin-top: 16px; margin-bottom: 6px;">Suggested Fonts</div>
+                            <div id="brand-fonts" style="display: flex; flex-wrap: wrap; gap: 6px;"></div>
+                            <hr class="section-divider">
+                            <button id="brand-apply-btn" class="btn-secondary" style="width: 100%; font-size: 0.8rem; background: rgba(236,72,153,0.1); border-color: rgba(236,72,153,0.3); color: #f472b6;">
+                                ✓ Apply to Text & Overlays
+                            </button>
+                        </div>
+                        <div id="brand-progress" style="display: none; margin-top: 10px;">
+                            <div style="height: 4px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden;">
+                                <div id="brand-progress-bar" style="height: 100%; width: 0%; background: linear-gradient(90deg, #f472b6, #f97316); border-radius: 2px; transition: width 0.5s ease;"></div>
+                            </div>
+                            <p id="brand-status-text" style="font-size: 0.73rem; color: #f472b6; margin-top: 6px; text-align: center;">Analyzing brand assets...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 🖼️ Decorative Border / Frame — collapsed accordion -->
+            <div class="glass-card" style="padding: 20px;">
+                <div class="accordion-header" onclick="this.classList.toggle('open'); this.nextElementSibling.classList.toggle('open');">
+                    <div class="section-header" style="margin-bottom: 0; flex: 1;">
+                        <div class="icon" style="background: rgba(251,191,36,0.15); color: #fbbf24;">🖼️</div>
+                        <h3>Border / Frame</h3>
+                    </div>
+                    <span class="accordion-chevron">▼</span>
+                </div>
+                <div class="accordion-body">
+                    <div style="padding-top: 12px;">
+                    <button class="border-btn active" data-border="none">
+                        <span class="border-icon">✖️</span>
+                        None
+                    </button>
+                    <button class="border-btn" data-border="ornate">
+                        <span class="border-icon">🏛️</span>
+                        Ornate
+                    </button>
+                    <button class="border-btn" data-border="modern">
+                        <span class="border-icon">◻️</span>
+                        Modern
+                    </button>
+                    <button class="border-btn" data-border="rustic">
+                        <span class="border-icon">🪵</span>
+                        Rustic
+                    </button>
+                    <button class="border-btn" data-border="artdeco">
+                        <span class="border-icon">💎</span>
+                        Art Deco
+                    </button>
+                    <button class="border-btn" data-border="vineyard">
+                        <span class="border-icon">🍇</span>
+                        Vineyard
+                    </button>
+                </div>
+
+                <div id="border-options" style="display: none; margin-top: 12px;">
+                    <div class="slider-group">
+                        <label><span>Thickness</span><span id="border-thickness-val">24px</span></label>
+                        <input type="range" id="border-thickness" min="8" max="80" value="24">
+                    </div>
+                    <div class="color-row" style="margin-bottom: 8px;">
+                        <input type="color" id="border-color" value="#2E3192" title="Border primary color">
+                        <span style="font-size: 0.75rem; color: #94a3b8;">Primary Color</span>
+                    </div>
+                    <div class="color-row">
+                        <input type="color" id="border-accent-color" value="#F26522" title="Border accent color">
+                        <span style="font-size: 0.75rem; color: #94a3b8;">Accent Color</span>
+                    </div>
+                </div>
+
+                <hr class="section-divider">
+
+                <!-- AI Border Generator -->
+                <div style="margin-top: 12px;">
+                    <div style="font-size: 0.7rem; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 8px;">🤖 AI-Generated Border</div>
+                    <div style="margin-bottom: 8px;">
+                        <select id="ai-border-theme" class="studio-select" title="AI border theme">
+                            <option value="italian-ornate">🇮🇹 Italian Ornate (Grape Vines & Gold)</option>
+                            <option value="art-deco">💎 Art Deco Geometric</option>
+                            <option value="tuscan-rustic">🏡 Tuscan Rustic (Terracotta & Olive)</option>
+                            <option value="floral-vintage">🌸 Floral Vintage</option>
+                            <option value="nautical">⚓ Nautical / Maritime</option>
+                            <option value="custom-border">✏️ Custom Theme</option>
+                        </select>
+                    </div>
+                    <div id="ai-border-custom-wrapper" style="display: none; margin-bottom: 8px;">
+                        <input type="text" id="ai-border-custom-prompt" class="studio-input" placeholder="Describe your border theme..." style="font-size: 0.8rem;">
+                    </div>
+                    <button id="ai-border-gen-btn" class="btn-primary" style="width: 100%; font-size: 0.82rem; background: linear-gradient(135deg, #fbbf24, #f97316);" disabled>
+                        🎨 Generate AI Border
+                    </button>
+                    <div id="ai-border-progress" style="display: none; margin-top: 8px;">
+                        <div style="height: 3px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden;">
+                            <div id="ai-border-progress-bar" style="height: 100%; width: 0%; background: linear-gradient(90deg, #fbbf24, #f97316); border-radius: 2px; transition: width 0.5s ease;"></div>
+                        </div>
+                        <p id="ai-border-status" style="font-size: 0.7rem; color: #fbbf24; margin-top: 4px; text-align: center;">Generating border...</p>
+                    </div>
+                    <p style="font-size: 0.63rem; color: #475569; margin-top: 6px; text-align: center;">Generates a transparent border overlay via Gemini 3.1 Flash</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 🧭 Overlays — collapsed accordion -->
+            <div class="glass-card" style="padding: 20px;">
+                <div class="accordion-header" onclick="this.classList.toggle('open'); this.nextElementSibling.classList.toggle('open');">
+                    <div class="section-header" style="margin-bottom: 0; flex: 1;">
+                        <div class="icon" style="background: rgba(16, 185, 129, 0.15); color: #34d399;">🧭</div>
+                        <h3>Overlays</h3>
+                    </div>
+                    <span class="accordion-chevron">▼</span>
+                </div>
+                <div class="accordion-body">
+                    <div style="padding-top: 12px;">
 
                 <!-- Compass Rose -->
                 <div class="overlay-toggle" id="compass-toggle" onclick="toggleCompass()">
@@ -600,10 +914,20 @@
                         style="margin-bottom: 8px;">
                     <div style="display: flex; gap: 8px; margin-bottom: 8px;">
                         <select id="text-font" class="studio-select" title="Font family">
-                            <option value="Inter">Inter</option>
+                            <option value="Inter">Inter (Sans)</option>
+                            <option value="Playfair Display">Playfair Display</option>
+                            <option value="Cinzel">Cinzel (Engraved)</option>
+                            <option value="Merriweather">Merriweather</option>
+                            <option value="Oswald">Oswald (Condensed)</option>
+                            <option value="Lobster">Lobster (Script)</option>
+                            <option value="Pacifico">Pacifico (Handwritten)</option>
+                            <option value="Bungee">Bungee (Display)</option>
+                            <option value="Anton">Anton (Impact)</option>
+                            <option value="Bangers">Bangers (Comic)</option>
+                            <option value="Permanent Marker">Permanent Marker</option>
+                            <option value="Abril Fatface">Abril Fatface</option>
                             <option value="Georgia">Georgia (Serif)</option>
                             <option value="Courier New">Courier New</option>
-                            <option value="Arial Black">Arial Black</option>
                         </select>
                     </div>
                     <div class="slider-group">
@@ -639,6 +963,8 @@
                         <input type="range" id="logo-size" min="30" max="300" value="80">
                     </div>
                 </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Final Step: Make Tile Layer -->
@@ -656,8 +982,8 @@
             </div>
         </div>
 
-        <!-- Right: Canvas Preview -->
-        <div style="flex: 1; min-width: 0;">
+        <!-- Right: Canvas Preview (always visible) -->
+        <div style="flex: 1; min-width: 0; position: sticky; top: 24px; align-self: flex-start; max-height: calc(100vh - 80px); overflow: auto;">
             <div class="glass-card" style="padding: 16px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
                     <h3 style="font-size: 0.85rem; font-weight: 600; color: #94a3b8;">
@@ -697,6 +1023,8 @@
         let sourceImage = null;       // Original uploaded Image element
         let logoImage = null;         // Logo Image element
         let activeFilter = 'original';
+        let activeBorder = 'none';    // Border style
+        let brandKit = null;          // { colors: [], fonts: [] }
 
         // Overlay states
         let compassEnabled = false;
@@ -708,8 +1036,13 @@
         let textPos = { x: 0.5, y: 0.08 };
         let logoPos = { x: 0.1, y: 0.9 };
 
+        // Venue Pins state
+        let venuePins = []; // Array of { id, type, label, x, y, color, labelColor, size }
+        let selectedPinType = 'fork';
+        let nextPinId = 1;
+
         // Dragging
-        let isDragging = null; // 'compass', 'text', 'logo', or null
+        let isDragging = null; // 'compass', 'text', 'logo', 'pin-<id>', or null
         let dragOffset = { x: 0, y: 0 };
 
         // Filter presets
@@ -746,10 +1079,13 @@
                 const img = new Image();
                 img.onload = () => {
                     sourceImage = img;
+                    console.log('✓ sourceImage set from file upload:', img.width, 'x', img.height);
                     document.getElementById('file-info').textContent = `${file.name} (${img.width}×${img.height})`;
                     document.getElementById('file-info').style.display = 'block';
                     document.getElementById('dimensions-badge').textContent = `${img.width} × ${img.height}`;
                     document.getElementById('download-btn').disabled = false;
+                    const aiBtn = document.getElementById('ai-stylize-btn');
+                    if (aiBtn) aiBtn.disabled = false;
 
                     // Hide placeholder, show canvas
                     document.getElementById('canvas-placeholder').style.display = 'none';
@@ -763,9 +1099,18 @@
         }
 
         // ============ Auto-load from Pinpointer (sessionStorage handoff) ============
+        // Persist bounds in memory so tile gen can use them after sessionStorage is cleared
+        window.mapBoundsData = null;
         (function checkPinpointerHandoff() {
             const dataUrl = sessionStorage.getItem('studioMapImage');
             if (!dataUrl) return;
+
+            // Save bounds BEFORE clearing sessionStorage
+            const boundsRaw = sessionStorage.getItem('studioBounds');
+            if (boundsRaw) {
+                window.mapBoundsData = JSON.parse(boundsRaw);
+                console.log('✓ Saved map bounds for tile gen:', window.mapBoundsData);
+            }
 
             const img = new Image();
             img.onload = () => {
@@ -779,10 +1124,9 @@
                 const aiBtn = document.getElementById('ai-stylize-btn');
                 if (aiBtn) aiBtn.disabled = false;
                 renderCanvas();
-                // Clean up sessionStorage after loading
+                // Clean up large image data from sessionStorage (bounds saved in memory above)
                 sessionStorage.removeItem('studioMapImage');
                 sessionStorage.removeItem('studioVenues');
-                sessionStorage.removeItem('studioBounds');
                 sessionStorage.removeItem('studioZoom');
                 sessionStorage.removeItem('studioCenter');
                 console.log('✓ Loaded Pinpointer capture into Studio');
@@ -943,6 +1287,12 @@
             if (activeFilter === 'watercolor') {
                 drawPaperTexture(ctx, canvas.width, canvas.height);
             }
+
+            // Draw border/frame
+            if (activeBorder !== 'none') drawBorder(ctx, canvas.width, canvas.height);
+
+            // Draw venue pins
+            venuePins.forEach(pin => drawVenuePin(ctx, canvas.width, canvas.height, pin));
 
             // Draw overlays
             if (compassEnabled) drawCompass(ctx, canvas.width, canvas.height);
@@ -1116,6 +1466,238 @@
             ctx.restore();
         }
 
+        // ============ Venue Pins ============
+        const PIN_PATHS = {
+            fork: (ctx, s) => {
+                // Simple fork icon
+                const t = s * 0.07;
+                ctx.beginPath();
+                // Handle
+                ctx.roundRect(-t, s * 0.1, t * 2, s * 0.55, t * 0.5);
+                ctx.fill();
+                // Left tine
+                ctx.beginPath();
+                ctx.roundRect(-t * 2.5, -s * 0.4, t, s * 0.45, t * 0.4);
+                ctx.fill();
+                // Center tine
+                ctx.beginPath();
+                ctx.roundRect(-t * 0.5, -s * 0.45, t, s * 0.5, t * 0.4);
+                ctx.fill();
+                // Right tine
+                ctx.beginPath();
+                ctx.roundRect(t * 1.5, -s * 0.4, t, s * 0.45, t * 0.4);
+                ctx.fill();
+            },
+            brewery: (ctx, s) => {
+                // Beer mug
+                const w = s * 0.32, h = s * 0.42;
+                ctx.beginPath();
+                ctx.roundRect(-w, -h * 0.5, w * 2, h, s * 0.04);
+                ctx.fill();
+                // Handle
+                ctx.beginPath();
+                ctx.arc(w + s * 0.06, -h * 0.1, s * 0.1, -Math.PI * 0.5, Math.PI * 0.5);
+                ctx.lineWidth = s * 0.05;
+                ctx.strokeStyle = ctx.fillStyle;
+                ctx.stroke();
+                // Foam
+                ctx.fillStyle = 'rgba(255,255,255,0.85)';
+                for (let i = -2; i <= 2; i++) {
+                    ctx.beginPath();
+                    ctx.arc(i * s * 0.12, -h * 0.52, s * 0.09, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            },
+            winery: (ctx, s) => {
+                // Wine glass
+                const stemW = s * 0.04;
+                // Bowl
+                ctx.beginPath();
+                ctx.ellipse(0, -s * 0.18, s * 0.2, s * 0.22, 0, 0, Math.PI);
+                ctx.fill();
+                // Stem
+                ctx.fillRect(-stemW, -s * 0.02, stemW * 2, s * 0.35);
+                // Base
+                ctx.beginPath();
+                ctx.ellipse(0, s * 0.34, s * 0.16, s * 0.04, 0, 0, Math.PI * 2);
+                ctx.fill();
+                // Wine level
+                ctx.fillStyle = 'rgba(128, 0, 32, 0.35)';
+                ctx.beginPath();
+                ctx.ellipse(0, -s * 0.12, s * 0.17, s * 0.14, 0, 0.3, Math.PI - 0.3);
+                ctx.fill();
+            },
+            church: (ctx, s) => {
+                // Church/steeple
+                // Cross on top
+                const cx = s * 0.04;
+                ctx.fillRect(-cx, -s * 0.48, cx * 2, s * 0.22);
+                ctx.fillRect(-cx * 2.5, -s * 0.4, cx * 5, cx * 2);
+                // Steeple
+                ctx.beginPath();
+                ctx.moveTo(0, -s * 0.28);
+                ctx.lineTo(-s * 0.15, -s * 0.08);
+                ctx.lineTo(s * 0.15, -s * 0.08);
+                ctx.closePath();
+                ctx.fill();
+                // Body
+                ctx.fillRect(-s * 0.22, -s * 0.08, s * 0.44, s * 0.42);
+                // Door
+                ctx.fillStyle = 'rgba(0,0,0,0.25)';
+                ctx.beginPath();
+                ctx.arc(0, s * 0.2, s * 0.08, Math.PI, 0);
+                ctx.fillRect(-s * 0.08, s * 0.2, s * 0.16, s * 0.14);
+                ctx.fill();
+            },
+            custom: (ctx, s) => {
+                // 5-point star
+                const spikes = 5, outerR = s * 0.35, innerR = s * 0.15;
+                ctx.beginPath();
+                for (let i = 0; i < spikes * 2; i++) {
+                    const r = i % 2 === 0 ? outerR : innerR;
+                    const angle = (i * Math.PI / spikes) - Math.PI / 2;
+                    const method = i === 0 ? 'moveTo' : 'lineTo';
+                    ctx[method](Math.cos(angle) * r, Math.sin(angle) * r);
+                }
+                ctx.closePath();
+                ctx.fill();
+            }
+        };
+
+        function drawVenuePin(ctx, canvasW, canvasH, pin) {
+            const px = pin.x * canvasW;
+            const py = pin.y * canvasH;
+            const s = pin.size;
+
+            ctx.save();
+            ctx.translate(px, py);
+
+            // Drop shadow
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
+            ctx.shadowBlur = s * 0.2;
+            ctx.shadowOffsetY = s * 0.08;
+
+            // Map pin teardrop shape
+            ctx.beginPath();
+            ctx.moveTo(0, s * 0.65);
+            ctx.bezierCurveTo(-s * 0.08, s * 0.3, -s * 0.45, s * 0.1, -s * 0.45, -s * 0.15);
+            ctx.arc(0, -s * 0.15, s * 0.45, Math.PI, 0);
+            ctx.bezierCurveTo(s * 0.45, s * 0.1, s * 0.08, s * 0.3, 0, s * 0.65);
+            ctx.closePath();
+            ctx.fillStyle = pin.color;
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+            ctx.lineWidth = Math.max(1, s * 0.03);
+            ctx.stroke();
+
+            // White inner circle
+            ctx.shadowColor = 'transparent';
+            ctx.beginPath();
+            ctx.arc(0, -s * 0.15, s * 0.32, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(255,255,255,0.92)';
+            ctx.fill();
+
+            // Draw icon inside
+            ctx.fillStyle = pin.color;
+            ctx.translate(0, -s * 0.15);
+            const iconScale = s * 0.65;
+            if (PIN_PATHS[pin.type]) {
+                PIN_PATHS[pin.type](ctx, iconScale);
+            }
+
+            ctx.restore();
+
+            // Label below pin
+            if (pin.label) {
+                ctx.save();
+                const fontSize = Math.max(10, s * 0.32);
+                ctx.font = `600 ${fontSize}px Inter, sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'top';
+
+                // Label background
+                const metrics = ctx.measureText(pin.label);
+                const labelW = metrics.width + fontSize * 0.6;
+                const labelH = fontSize * 1.4;
+                const labelX = px - labelW / 2;
+                const labelY = py + s * 0.72;
+
+                ctx.shadowColor = 'rgba(0,0,0,0.25)';
+                ctx.shadowBlur = 4;
+                ctx.fillStyle = 'rgba(255,255,255,0.9)';
+                ctx.beginPath();
+                ctx.roundRect(labelX, labelY, labelW, labelH, 4);
+                ctx.fill();
+
+                ctx.shadowColor = 'transparent';
+                ctx.fillStyle = pin.labelColor || '#1e293b';
+                ctx.fillText(pin.label, px, labelY + fontSize * 0.18);
+                ctx.restore();
+            }
+        }
+
+        // ---- Pin UI Logic ----
+        document.querySelectorAll('.pin-type-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.pin-type-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                selectedPinType = btn.dataset.pinType;
+            });
+        });
+
+        document.getElementById('add-pin-btn')?.addEventListener('click', () => {
+            if (!sourceImage) return;
+            const pin = {
+                id: nextPinId++,
+                type: selectedPinType,
+                label: document.getElementById('pin-label-text').value.trim(),
+                x: 0.3 + Math.random() * 0.4,
+                y: 0.3 + Math.random() * 0.4,
+                color: document.getElementById('pin-color').value,
+                labelColor: document.getElementById('pin-label-color').value,
+                size: parseInt(document.getElementById('pin-size').value)
+            };
+            venuePins.push(pin);
+            document.getElementById('pin-label-text').value = '';
+            refreshPinsList();
+            renderCanvas();
+        });
+
+        document.getElementById('clear-pins-btn')?.addEventListener('click', () => {
+            venuePins = [];
+            refreshPinsList();
+            renderCanvas();
+        });
+
+        document.getElementById('pin-size')?.addEventListener('input', (e) => {
+            document.getElementById('pin-size-val').textContent = e.target.value + 'px';
+        });
+
+        function refreshPinsList() {
+            const container = document.getElementById('pins-list');
+            if (venuePins.length === 0) {
+                container.innerHTML = '<p style="font-size: 0.73rem; color: #475569; text-align: center; padding: 12px 0;">No pins placed yet</p>';
+                return;
+            }
+            const typeLabels = { fork: '🍴 Fork', brewery: '🍺 Brewery', winery: '🍷 Winery', church: '⛪ Church', custom: '⭐ Custom' };
+            container.innerHTML = venuePins.map(p => `
+                <div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 8px; margin-bottom: 4px; background: rgba(255,255,255,0.04); border-radius: 8px; font-size: 0.78rem;">
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <span style="width: 10px; height: 10px; border-radius: 50%; background: ${p.color}; display: inline-block;"></span>
+                        <span style="color: #e2e8f0;">${typeLabels[p.type] || p.type}</span>
+                        ${p.label ? `<span style="color: #64748b;">— ${p.label}</span>` : ''}
+                    </div>
+                    <button onclick="removePin(${p.id})" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 0.85rem; padding: 2px 6px;" title="Remove pin">✕</button>
+                </div>
+            `).join('');
+        }
+
+        function removePin(id) {
+            venuePins = venuePins.filter(p => p.id !== id);
+            refreshPinsList();
+            renderCanvas();
+        }
+
         // ============ Canvas Dragging ============
         const canvas = document.getElementById('preview-canvas');
 
@@ -1166,6 +1748,21 @@
                     return;
                 }
             }
+
+            // Check venue pins (reverse order so top pin wins)
+            for (let i = venuePins.length - 1; i >= 0; i--) {
+                const pin = venuePins[i];
+                const pinX = pin.x * canvas.width;
+                const pinY = pin.y * canvas.height;
+                const hitR = pin.size * 0.6;
+                const dist = Math.sqrt((mx - pinX) ** 2 + (my - pinY) ** 2);
+                if (dist < hitR) {
+                    isDragging = 'pin-' + pin.id;
+                    dragOffset.x = mx - pinX;
+                    dragOffset.y = my - pinY;
+                    return;
+                }
+            }
         });
 
         canvas.addEventListener('mousemove', (e) => {
@@ -1189,6 +1786,13 @@
             } else if (isDragging === 'logo') {
                 logoPos.x = Math.max(0.05, Math.min(0.95, newX));
                 logoPos.y = Math.max(0.05, Math.min(0.95, newY));
+            } else if (isDragging && isDragging.startsWith('pin-')) {
+                const pinId = parseInt(isDragging.split('-')[1]);
+                const pin = venuePins.find(p => p.id === pinId);
+                if (pin) {
+                    pin.x = Math.max(0.03, Math.min(0.97, newX));
+                    pin.y = Math.max(0.03, Math.min(0.97, newY));
+                }
             }
 
             renderCanvas();
@@ -1214,24 +1818,109 @@
         });
 
         // ============ Download ============
-        document.getElementById('download-btn').addEventListener('click', () => {
+        document.getElementById('download-btn').addEventListener('click', async () => {
             if (!sourceImage) return;
 
-            // Render at full resolution
-            renderCanvas();
+            const btn = document.getElementById('download-btn');
+            const origText = btn.innerHTML;
 
+            // Get map bounds from memory (saved during Pinpointer auto-load)
+            // Falls back to sessionStorage key 'studioBounds' if still present
+            let bounds = window.mapBoundsData;
+            if (!bounds) {
+                const boundsRaw = sessionStorage.getItem('studioBounds');
+                if (boundsRaw) bounds = JSON.parse(boundsRaw);
+            }
+            if (!bounds) {
+                alert('No map bounds found. Please capture a map from the Pinpointer first.');
+                return;
+            }
+
+            // Render at full resolution and get PNG base64
+            renderCanvas();
             const canvas = document.getElementById('preview-canvas');
-            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-            const link = document.createElement('a');
-            link.download = `hipmaps_styled_${timestamp}.png`;
-            link.href = canvas.toDataURL('image/png');
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            const dataUrl = canvas.toDataURL('image/png');
+            const base64 = dataUrl.split(',')[1];
+
+            btn.disabled = true;
+            btn.innerHTML = '⏳ Starting pipeline...';
+
+            try {
+                // POST to server's tile generation endpoint
+                const resp = await fetch('/generate-tiles', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        image: base64,
+                        bounds: bounds,
+                        minZoom: 10,
+                        maxZoom: 15
+                    })
+                });
+
+                if (!resp.ok) {
+                    const err = await resp.json().catch(() => ({}));
+                    throw new Error(err.error || `Server returned ${resp.status}`);
+                }
+
+                // Poll for progress
+                const pollInterval = setInterval(async () => {
+                    try {
+                        const statusResp = await fetch('/tile-status');
+                        const status = await statusResp.json();
+
+                        btn.innerHTML = `⏳ ${status.progress || 'Processing...'}`;
+
+                        if (status.done) {
+                            clearInterval(pollInterval);
+                            btn.innerHTML = `✅ ${status.tile_count} tiles (${status.tile_size})`;
+                            btn.style.background = 'linear-gradient(135deg, #22c55e, #16a34a)';
+
+                            // Also offer a direct PNG download
+                            const link = document.createElement('a');
+                            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+                            link.download = `hipmaps_styled_${timestamp}.png`;
+                            link.href = dataUrl;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+
+                            // Re-enable after a moment
+                            setTimeout(() => {
+                                btn.disabled = false;
+                                btn.innerHTML = origText;
+                            }, 5000);
+                        }
+
+                        if (status.error) {
+                            clearInterval(pollInterval);
+                            btn.innerHTML = `❌ ${status.error}`;
+                            btn.style.background = 'linear-gradient(135deg, #ef4444, #dc2626)';
+                            setTimeout(() => {
+                                btn.disabled = false;
+                                btn.innerHTML = origText;
+                                btn.style.background = '';
+                            }, 5000);
+                        }
+                    } catch (pollErr) {
+                        console.warn('Poll error:', pollErr);
+                    }
+                }, 2000);
+
+            } catch (err) {
+                console.error('Tile generation error:', err);
+                btn.innerHTML = `❌ ${err.message}`;
+                setTimeout(() => {
+                    btn.disabled = false;
+                    btn.innerHTML = origText;
+                }, 4000);
+            }
         });
 
         // ============ AI Stylize (Nano Banana) ============
         const aiStylePrompts = {
+            'italian-villa': 'Redraw this map in a romantic Italian villa style. Use warm terracotta and sun-bleached ochre for the land, deep Mediterranean blue for water, and paint the roads as winding golden-brown paths that resemble rustic Italian country lanes. Add a warm parchment texture to the background with a feel of aged Tuscan paper. The vineyard areas should be painted in rich olive green and sage. Use an elegant, hand-illustrated style reminiscent of a framed wall map in an Italian countryside estate. Keep all roads, coastlines, water bodies, and features in exactly the same pixel positions. Do not add any text labels. The palette should be: terracotta (#C65D3E), olive (#708238), ochre (#D4A849), Mediterranean blue (#1A6FB4), cream parchment (#F5E6C8).',
+            'tuscan-trattoria': 'Transform this map into a whimsical Italian trattoria style illustration. Make the roads look like long, winding strands of golden spaghetti pasta on a warm red-and-white checkered tablecloth background. Water bodies should be pools of rich olive oil with a golden-green shimmer. Vineyard and park areas should be clusters of bright basil leaves and tomatoes. Keep all geographic features and roads in exactly the same pixel positions, but give everything a playful, food-inspired Italian restaurant aesthetic. The overall feel should be warm, fun, inviting — like a placemat at a family-owned trattoria. Do not add any text labels. Use colors: tomato red (#E23D28), pasta gold (#F2C94C), basil green (#4A7C41), olive oil (#C7A94B), mozzarella white (#FFF5E1).',
             'vintage-cartography': 'Redraw this map as a vintage hand-drawn cartography illustration. Use warm sepia and parchment tones, elegant calligraphic line work for roads, artistic shading for terrain, and hand-drawn coastline edges. Keep all roads, coastlines, water bodies, and venue markers in exactly the same pixel positions. Do not add any text labels. The result should look like a 19th century cartographer drew it by hand.',
             'watercolor': 'Transform this map into a beautiful watercolor painting. Use soft, flowing washes of color — greens for land, blues for water, warm beiges for roads. Add gentle color bleeding at edges and subtle paper texture. Keep all roads, coastlines, and markers in exactly the same positions. The style should be loose and artistic but geographically accurate.',
             'ink-drawing': 'Redraw this map as a precise black ink line drawing on white paper. Use clean, confident pen strokes for roads, stippling and cross-hatching for terrain texture, and bold outlines for coastlines and water edges. Keep all geographic features in exactly the same positions. The result should look like a skilled illustrator drew it with a fountain pen.',
@@ -1257,7 +1946,38 @@
         let preAiImage = null; // Store pre-AI image for revert
 
         document.getElementById('ai-stylize-btn').addEventListener('click', async () => {
-            if (!sourceImage) return;
+            console.log('🤖 AI Stylize clicked. sourceImage:', sourceImage, '| type:', typeof sourceImage);
+            
+            // Fallback: if sourceImage is null but canvas has content, recover it
+            if (!sourceImage) {
+                const canvas = document.getElementById('preview-canvas');
+                if (canvas && canvas.width > 0 && canvas.height > 0) {
+                    try {
+                        const ctx = canvas.getContext('2d');
+                        const pixel = ctx.getImageData(canvas.width/2, canvas.height/2, 1, 1).data;
+                        if (pixel[3] > 0) {
+                            // Canvas has visible content — recover sourceImage from it
+                            console.warn('⚠️ sourceImage was null but canvas has content. Recovering...');
+                            const recoveredImg = new Image();
+                            recoveredImg.src = canvas.toDataURL('image/png');
+                            await new Promise((resolve, reject) => {
+                                recoveredImg.onload = resolve;
+                                recoveredImg.onerror = reject;
+                            });
+                            sourceImage = recoveredImg;
+                            console.log('✓ Recovered sourceImage from canvas:', recoveredImg.width, 'x', recoveredImg.height);
+                        }
+                    } catch(e) {
+                        console.error('Recovery failed:', e);
+                    }
+                }
+            }
+            
+            if (!sourceImage) {
+                console.error('❌ AI Stylize aborted: no sourceImage and canvas recovery failed');
+                alert('Please upload or capture a map image first.');
+                return;
+            }
 
             const btn = document.getElementById('ai-stylize-btn');
             const progress = document.getElementById('ai-progress');
@@ -1280,7 +2000,7 @@
             }
 
             // Check for preserve markers
-            const preserveMarkers = document.getElementById('ai-preserve-markers').classList.contains('active');
+            const preserveMarkers = document.getElementById('ai-preserve-markers')?.classList?.contains('active') ?? false;
             if (preserveMarkers) {
                 prompt += ' Preserve any venue marker pins or icons exactly as they appear — do not alter or remove them.';
             }
@@ -1339,6 +2059,13 @@
 
                 progressBar.style.width = '40%';
                 statusText.textContent = 'AI is tracing the map — this may take 30-60 seconds...';
+
+                console.log('🚀 Sending AI Stylize request:', {
+                    model: 'gemini-3.1-flash-image-preview',
+                    imageSize: Math.round(base64.length / 1024) + ' KB',
+                    promptLength: prompt.length,
+                    apiUrl: apiUrl.replace(/key=.*/, 'key=***')
+                });
 
                 const response = await fetch(apiUrl, {
                     method: 'POST',
@@ -1456,6 +2183,149 @@
             document.getElementById('ai-status-text').style.color = '#a78bfa';
         });
 
+        // ============ AI Border Generator ============
+        const aiBorderPrompts = {
+            'italian-ornate': 'Create a decorative rectangular border frame for a map. The style should be ornate Italian Renaissance with intertwining grape vines, golden scrollwork, and small grape clusters at the corners. Use rich gold (#D4A849), deep burgundy (#8B2252), and vine green (#4A7C41) colors. The center must be completely transparent/empty — only draw the border frame around the edges. The border should be about 60 pixels wide on each side. Make it elegant and luxurious like a framed Italian villa wall map.',
+            'art-deco': 'Create a rectangular Art Deco border frame for a map. Use geometric patterns — chevrons, sunbursts, stepped pyramids, and angular fan motifs. Colors should be black and gold (#D4AF37) with clean, bold lines. The center must be completely transparent/empty — only draw the border frame around the edges. The border should be about 50 pixels wide. Style it like a 1920s luxury hotel lobby frame.',
+            'tuscan-rustic': 'Create a rectangular border frame for a map in a rustic Tuscan style. Use warm terracotta (#C65D3E) colored edges with olive branch motifs, small sunflower accents at corners, and a rough, hand-painted texture. The center must be completely transparent/empty — only draw the border. About 50 pixels wide on each side. Should look like it belongs in a countryside farmhouse kitchen.',
+            'floral-vintage': 'Create a rectangular decorative border frame with vintage floral patterns. Use roses, peonies, and leaves in muted pastel tones — dusty rose (#D4A0A0), sage green (#8B9A73), cream (#FFF5E1), and touches of gold. The center must be completely transparent/empty. About 60 pixels wide. Style like a vintage botanical illustration frame.',
+            'nautical': 'Create a rectangular border frame in a nautical/maritime style. Use rope knots, anchors at corners, compass star accents, and wave patterns. Colors: navy blue (#1B3A5C), white, and brass gold (#B8860B). The center must be completely transparent/empty. About 50 pixels wide. Like a frame on a ship captain\'s chart room wall.'
+        };
+
+        // Toggle custom border prompt
+        document.getElementById('ai-border-theme').addEventListener('change', function() {
+            const wrapper = document.getElementById('ai-border-custom-wrapper');
+            wrapper.style.display = this.value === 'custom-border' ? 'block' : 'none';
+        });
+
+        // Enable AI border button when image is loaded
+        const borderObserver = setInterval(() => {
+            const btn = document.getElementById('ai-border-gen-btn');
+            if (sourceImage && btn.disabled) {
+                btn.disabled = false;
+                clearInterval(borderObserver);
+            }
+        }, 500);
+
+        let aiBorderImage = null; // Store generated border
+
+        document.getElementById('ai-border-gen-btn').addEventListener('click', async () => {
+            if (!sourceImage) return;
+
+            const btn = document.getElementById('ai-border-gen-btn');
+            const progress = document.getElementById('ai-border-progress');
+            const progressBar = document.getElementById('ai-border-progress-bar');
+            const statusText = document.getElementById('ai-border-status');
+
+            const theme = document.getElementById('ai-border-theme').value;
+            let prompt;
+            if (theme === 'custom-border') {
+                prompt = document.getElementById('ai-border-custom-prompt').value.trim();
+                if (!prompt) { alert('Enter a border theme description.'); return; }
+                prompt += ' Create a rectangular decorative border frame. The center must be completely transparent/empty — only draw the border frame around the edges, about 50-60 pixels wide.';
+            } else {
+                prompt = aiBorderPrompts[theme];
+            }
+
+            // Add size context
+            const canvas = document.getElementById('preview-canvas');
+            prompt += ` The image dimensions are ${canvas.width}x${canvas.height} pixels. Generate the border at this exact size.`;
+
+            btn.disabled = true;
+            btn.textContent = '⏳ Generating...';
+            progress.style.display = 'block';
+            progressBar.style.width = '20%';
+            statusText.textContent = 'Sending to Gemini 3.1 Flash...';
+
+            try {
+                const apiKey = (typeof GEMINI_API_KEY !== 'undefined') ? GEMINI_API_KEY :
+                               (typeof GOOGLE_API_KEY !== 'undefined') ? GOOGLE_API_KEY : null;
+                if (!apiKey) throw new Error('No API key found.');
+
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent?key=${apiKey}`;
+
+                progressBar.style.width = '40%';
+                statusText.textContent = 'AI is designing your border...';
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }],
+                        generationConfig: {
+                            responseModalities: ['IMAGE', 'TEXT'],
+                            temperature: 0.6
+                        }
+                    })
+                });
+
+                progressBar.style.width = '80%';
+                statusText.textContent = 'Processing border image...';
+
+                if (!response.ok) {
+                    const errData = await response.json().catch(() => ({}));
+                    throw new Error(errData.error?.message || `API returned ${response.status}`);
+                }
+
+                const data = await response.json();
+                let imageBase64 = null;
+                if (data.candidates && data.candidates[0]?.content?.parts) {
+                    for (const part of data.candidates[0].content.parts) {
+                        if (part.inlineData && part.inlineData.mimeType?.startsWith('image/')) {
+                            imageBase64 = part.inlineData.data;
+                            break;
+                        }
+                    }
+                }
+
+                if (!imageBase64) {
+                    let textResponse = '';
+                    if (data.candidates && data.candidates[0]?.content?.parts) {
+                        for (const part of data.candidates[0].content.parts) {
+                            if (part.text) textResponse += part.text;
+                        }
+                    }
+                    throw new Error(textResponse || 'No border image returned from AI.');
+                }
+
+                // Load border as overlay image
+                const borderImg = new Image();
+                borderImg.onload = () => {
+                    aiBorderImage = borderImg;
+
+                    // Composite the border on top of the current canvas
+                    const ctx = canvas.getContext('2d');
+                    renderCanvas(); // render base first
+                    ctx.drawImage(borderImg, 0, 0, canvas.width, canvas.height);
+
+                    progressBar.style.width = '100%';
+                    statusText.textContent = '✓ Border applied! Use AI Stylize to regenerate map without border, or download as-is.';
+                    statusText.style.color = '#34d399';
+
+                    btn.disabled = false;
+                    btn.textContent = '🎨 Generate AI Border';
+                };
+                borderImg.onerror = () => {
+                    throw new Error('Failed to load the generated border image.');
+                };
+                borderImg.src = `data:image/png;base64,${imageBase64}`;
+
+            } catch (err) {
+                console.error('AI Border error:', err);
+                progressBar.style.width = '100%';
+                progressBar.style.background = '#ef4444';
+                statusText.textContent = `⚠ Error: ${err.message}`;
+                statusText.style.color = '#ef4444';
+                btn.disabled = false;
+                btn.textContent = '🎨 Generate AI Border';
+
+                setTimeout(() => {
+                    progressBar.style.background = 'linear-gradient(90deg, #fbbf24, #f97316)';
+                    statusText.style.color = '#fbbf24';
+                }, 5000);
+            }
+        });
+
         // ============ Zoom Controls ============
         document.getElementById('zoom-fit').addEventListener('click', () => {
             const canvas = document.getElementById('preview-canvas');
@@ -1472,6 +2342,511 @@
             canvas.style.width = canvas.width + 'px';
             canvas.style.height = canvas.height + 'px';
         });
+
+        // ============ Border / Frame System ============
+        document.querySelectorAll('.border-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.border-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                activeBorder = btn.dataset.border;
+                document.getElementById('border-options').style.display = activeBorder === 'none' ? 'none' : 'block';
+                renderCanvas();
+            });
+        });
+
+        ['border-thickness', 'border-color', 'border-accent-color'].forEach(id => {
+            document.getElementById(id).addEventListener('input', (e) => {
+                if (id === 'border-thickness') {
+                    document.getElementById('border-thickness-val').textContent = e.target.value + 'px';
+                }
+                renderCanvas();
+            });
+        });
+
+        function drawBorder(ctx, w, h) {
+            const T = parseInt(document.getElementById('border-thickness').value);
+            const primary = document.getElementById('border-color').value;
+            const accent = document.getElementById('border-accent-color').value;
+
+            ctx.save();
+
+            switch (activeBorder) {
+                case 'ornate':
+                    drawOrnateBorder(ctx, w, h, T, primary, accent);
+                    break;
+                case 'modern':
+                    drawModernBorder(ctx, w, h, T, primary, accent);
+                    break;
+                case 'rustic':
+                    drawRusticBorder(ctx, w, h, T, primary, accent);
+                    break;
+                case 'artdeco':
+                    drawArtDecoBorder(ctx, w, h, T, primary, accent);
+                    break;
+                case 'vineyard':
+                    drawVineyardBorder(ctx, w, h, T, primary, accent);
+                    break;
+            }
+
+            ctx.restore();
+        }
+
+        function drawOrnateBorder(ctx, w, h, T, primary, accent) {
+            // Double-line frame with corner flourishes
+            ctx.strokeStyle = primary;
+            ctx.lineWidth = T * 0.4;
+            ctx.strokeRect(T * 0.5, T * 0.5, w - T, h - T);
+
+            ctx.strokeStyle = accent;
+            ctx.lineWidth = T * 0.15;
+            ctx.strokeRect(T * 1.2, T * 1.2, w - T * 2.4, h - T * 2.4);
+
+            // Inner decorative line
+            ctx.setLineDash([T * 0.3, T * 0.2]);
+            ctx.strokeStyle = primary;
+            ctx.lineWidth = T * 0.08;
+            ctx.strokeRect(T * 1.8, T * 1.8, w - T * 3.6, h - T * 3.6);
+            ctx.setLineDash([]);
+
+            // Corner flourishes
+            const cornerSize = T * 2;
+            const corners = [
+                [0, 0, 1, 1], [w, 0, -1, 1],
+                [0, h, 1, -1], [w, h, -1, -1]
+            ];
+            ctx.strokeStyle = accent;
+            ctx.lineWidth = T * 0.12;
+            corners.forEach(([cx, cy, dx, dy]) => {
+                ctx.beginPath();
+                ctx.moveTo(cx + dx * T * 0.3, cy + dy * cornerSize);
+                ctx.quadraticCurveTo(cx + dx * T * 0.6, cy + dy * T * 0.6, cx + dx * cornerSize, cy + dy * T * 0.3);
+                ctx.stroke();
+                // Inner corner arc
+                ctx.beginPath();
+                ctx.arc(cx + dx * T * 1.5, cy + dy * T * 1.5, T * 0.8, 0, Math.PI * 2);
+                ctx.stroke();
+            });
+        }
+
+        function drawModernBorder(ctx, w, h, T, primary, accent) {
+            // Clean geometric frame
+            ctx.fillStyle = primary;
+            ctx.fillRect(0, 0, w, T);           // Top
+            ctx.fillRect(0, h - T, w, T);       // Bottom
+            ctx.fillRect(0, 0, T, h);           // Left
+            ctx.fillRect(w - T, 0, T, h);       // Right
+
+            // Inner accent line
+            ctx.strokeStyle = accent;
+            ctx.lineWidth = T * 0.15;
+            ctx.strokeRect(T + T * 0.3, T + T * 0.3, w - (T + T * 0.3) * 2, h - (T + T * 0.3) * 2);
+
+            // Corner squares
+            const sq = T * 0.6;
+            ctx.fillStyle = accent;
+            ctx.fillRect(T * 0.2, T * 0.2, sq, sq);
+            ctx.fillRect(w - T * 0.2 - sq, T * 0.2, sq, sq);
+            ctx.fillRect(T * 0.2, h - T * 0.2 - sq, sq, sq);
+            ctx.fillRect(w - T * 0.2 - sq, h - T * 0.2 - sq, sq, sq);
+        }
+
+        function drawRusticBorder(ctx, w, h, T, primary, accent) {
+            // Rough wood-frame style
+            ctx.fillStyle = primary;
+            ctx.globalAlpha = 0.85;
+
+            // Draw slightly irregular rectangles
+            ctx.fillRect(0, 0, w, T * 1.2);
+            ctx.fillRect(0, h - T * 1.2, w, T * 1.2);
+            ctx.fillRect(0, 0, T * 1.2, h);
+            ctx.fillRect(w - T * 1.2, 0, T * 1.2, h);
+            ctx.globalAlpha = 1;
+
+            // Grain lines
+            ctx.strokeStyle = accent;
+            ctx.globalAlpha = 0.3;
+            ctx.lineWidth = 1;
+            for (let i = 0; i < T * 1.2; i += 3) {
+                // Top/bottom horizontal grain
+                ctx.beginPath();
+                ctx.moveTo(0, i);
+                ctx.lineTo(w, i + Math.random() * 2);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(0, h - i);
+                ctx.lineTo(w, h - i - Math.random() * 2);
+                ctx.stroke();
+            }
+            for (let i = 0; i < T * 1.2; i += 3) {
+                // Left/right vertical grain
+                ctx.beginPath();
+                ctx.moveTo(i, 0);
+                ctx.lineTo(i + Math.random() * 2, h);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(w - i, 0);
+                ctx.lineTo(w - i - Math.random() * 2, h);
+                ctx.stroke();
+            }
+            ctx.globalAlpha = 1;
+
+            // Corner nail heads
+            const nailR = T * 0.2;
+            ctx.fillStyle = '#5c534a';
+            [[T * 0.6, T * 0.6], [w - T * 0.6, T * 0.6],
+             [T * 0.6, h - T * 0.6], [w - T * 0.6, h - T * 0.6]].forEach(([nx, ny]) => {
+                ctx.beginPath();
+                ctx.arc(nx, ny, nailR, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#3a3530';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            });
+        }
+
+        function drawArtDecoBorder(ctx, w, h, T, primary, accent) {
+            // Geometric Art Deco pattern
+            ctx.strokeStyle = primary;
+            ctx.lineWidth = T * 0.5;
+            ctx.strokeRect(T * 0.25, T * 0.25, w - T * 0.5, h - T * 0.5);
+
+            ctx.strokeStyle = accent;
+            ctx.lineWidth = T * 0.1;
+            ctx.strokeRect(T, T, w - T * 2, h - T * 2);
+
+            // Fan/sunburst corner motifs
+            const fanR = T * 2;
+            ctx.strokeStyle = accent;
+            ctx.lineWidth = T * 0.06;
+            const cornerPts = [[0, 0], [w, 0], [0, h], [w, h]];
+            cornerPts.forEach(([cx, cy]) => {
+                for (let a = 0; a < Math.PI / 2; a += Math.PI / 12) {
+                    const dx = cx === 0 ? 1 : -1;
+                    const dy = cy === 0 ? 1 : -1;
+                    ctx.beginPath();
+                    ctx.moveTo(cx, cy);
+                    ctx.lineTo(cx + Math.cos(a + (cx === 0 ? 0 : Math.PI / 2) + (cy === 0 ? 0 : Math.PI / 2)) * fanR * dx * (cx === 0 ? 1 : -1),
+                               cy + Math.sin(a + (cx === 0 ? 0 : Math.PI / 2) + (cy === 0 ? 0 : Math.PI / 2)) * fanR * dy * (cy === 0 ? 1 : -1));
+                    ctx.stroke();
+                }
+            });
+
+            // Stepped inner frame
+            const step = T * 0.2;
+            ctx.strokeStyle = primary;
+            ctx.lineWidth = T * 0.05;
+            for (let i = 0; i < 3; i++) {
+                const offset = T * 1.3 + i * step;
+                ctx.strokeRect(offset, offset, w - offset * 2, h - offset * 2);
+            }
+        }
+
+        function drawVineyardBorder(ctx, w, h, T, primary, accent) {
+            // Wine country / vineyard themed frame
+            ctx.strokeStyle = primary;
+            ctx.lineWidth = T * 0.3;
+            ctx.strokeRect(T * 0.4, T * 0.4, w - T * 0.8, h - T * 0.8);
+
+            ctx.strokeStyle = accent;
+            ctx.lineWidth = T * 0.12;
+            ctx.strokeRect(T, T, w - T * 2, h - T * 2);
+
+            // Vine/grape motif along top and bottom
+            ctx.strokeStyle = accent;
+            ctx.lineWidth = T * 0.06;
+            const vineY_top = T * 0.7;
+            const vineY_bot = h - T * 0.7;
+
+            // Wavy vine line - top
+            ctx.beginPath();
+            for (let x = T * 2; x < w - T * 2; x += T * 0.8) {
+                const vy = vineY_top + Math.sin(x * 0.02) * T * 0.2;
+                if (x === T * 2) ctx.moveTo(x, vy);
+                else ctx.lineTo(x, vy);
+            }
+            ctx.stroke();
+
+            // Wavy vine line - bottom
+            ctx.beginPath();
+            for (let x = T * 2; x < w - T * 2; x += T * 0.8) {
+                const vy = vineY_bot + Math.sin(x * 0.02 + 1) * T * 0.2;
+                if (x === T * 2) ctx.moveTo(x, vy);
+                else ctx.lineTo(x, vy);
+            }
+            ctx.stroke();
+
+            // Small grape clusters at intervals
+            ctx.fillStyle = accent;
+            for (let x = T * 3; x < w - T * 3; x += T * 4) {
+                // Top cluster
+                const gy = vineY_top + Math.sin(x * 0.02) * T * 0.2;
+                for (let i = 0; i < 3; i++) {
+                    ctx.beginPath();
+                    ctx.arc(x + (i - 1) * T * 0.15, gy + T * 0.2, T * 0.1, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.beginPath();
+                ctx.arc(x, gy + T * 0.35, T * 0.1, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // ============ Brand Kit ============
+        let brandLogoImage = null;
+
+        const brandDropZone = document.getElementById('brand-drop-zone');
+        const brandFileInput = document.getElementById('brand-file-input');
+
+        brandDropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            brandDropZone.style.borderColor = '#f472b6';
+            brandDropZone.style.background = 'rgba(236,72,153,0.08)';
+        });
+        brandDropZone.addEventListener('dragleave', () => {
+            brandDropZone.style.borderColor = 'rgba(255,255,255,0.1)';
+            brandDropZone.style.background = 'transparent';
+        });
+        brandDropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            brandDropZone.style.borderColor = 'rgba(255,255,255,0.1)';
+            brandDropZone.style.background = 'transparent';
+            if (e.dataTransfer.files.length) loadBrandImage(e.dataTransfer.files[0]);
+        });
+        brandFileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) loadBrandImage(e.target.files[0]);
+        });
+
+        function loadBrandImage(file) {
+            if (!file.type.startsWith('image/')) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    brandLogoImage = img;
+                    document.getElementById('brand-file-info').textContent = `✓ ${file.name}`;
+                    document.getElementById('brand-file-info').style.display = 'block';
+                    document.getElementById('brand-extract-btn').disabled = false;
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Enable extract if URL is entered
+        document.getElementById('brand-url').addEventListener('input', (e) => {
+            const hasUrl = e.target.value.trim().length > 5;
+            const hasImage = !!brandLogoImage;
+            document.getElementById('brand-extract-btn').disabled = !hasUrl && !hasImage;
+        });
+
+        document.getElementById('brand-extract-btn').addEventListener('click', async () => {
+            const btn = document.getElementById('brand-extract-btn');
+            const progress = document.getElementById('brand-progress');
+            const progressBar = document.getElementById('brand-progress-bar');
+            const statusText = document.getElementById('brand-status-text');
+            const results = document.getElementById('brand-results');
+
+            btn.disabled = true;
+            btn.textContent = '⏳ Analyzing...';
+            progress.style.display = 'block';
+            results.style.display = 'none';
+            progressBar.style.width = '15%';
+            statusText.textContent = 'Sending to Gemini for brand analysis...';
+
+            try {
+                const apiKey = (typeof GEMINI_API_KEY !== 'undefined') ? GEMINI_API_KEY :
+                               (typeof GOOGLE_API_KEY !== 'undefined') ? GOOGLE_API_KEY : null;
+                if (!apiKey) throw new Error('No API key found. Add GEMINI_API_KEY to config.js');
+
+                const parts = [];
+
+                // Add logo image if available
+                if (brandLogoImage) {
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = brandLogoImage.width;
+                    tempCanvas.height = brandLogoImage.height;
+                    tempCanvas.getContext('2d').drawImage(brandLogoImage, 0, 0);
+                    const b64 = tempCanvas.toDataURL('image/png').split(',')[1];
+                    parts.push({ inlineData: { mimeType: 'image/png', data: b64 } });
+                }
+
+                const brandUrl = document.getElementById('brand-url').value.trim();
+                const promptText = `You are a brand design analyst. Analyze this ${brandLogoImage ? 'logo image' : ''}${brandLogoImage && brandUrl ? ' and ' : ''}${brandUrl ? 'website at ' + brandUrl : ''} and extract the brand identity.
+
+Return ONLY a valid JSON object with this exact structure (no markdown, no backticks, no explanation):
+{
+  "colors": [
+    { "hex": "#XXXXXX", "role": "primary" },
+    { "hex": "#XXXXXX", "role": "secondary" },
+    { "hex": "#XXXXXX", "role": "accent" },
+    { "hex": "#XXXXXX", "role": "background" },
+    { "hex": "#XXXXXX", "role": "text" }
+  ],
+  "fonts": [
+    { "name": "Font Name", "category": "serif|sans-serif|display|handwritten", "use": "headings|body|accent" }
+  ],
+  "mood": "one-sentence description of the brand feel"
+}
+
+For fonts, suggest Google Fonts that best match the visual style. Extract 4-6 colors and 2-3 fonts.`;
+
+                parts.push({ text: promptText });
+
+                progressBar.style.width = '40%';
+                statusText.textContent = 'AI is analyzing brand identity...';
+
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+                const resp = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts }],
+                        generationConfig: { temperature: 0.3, maxOutputTokens: 1024 }
+                    })
+                });
+
+                progressBar.style.width = '75%';
+                statusText.textContent = 'Processing brand data...';
+
+                if (!resp.ok) {
+                    const err = await resp.json().catch(() => ({}));
+                    throw new Error(err.error?.message || `API error ${resp.status}`);
+                }
+
+                const data = await resp.json();
+                let textResponse = '';
+                if (data.candidates?.[0]?.content?.parts) {
+                    for (const part of data.candidates[0].content.parts) {
+                        if (part.text) textResponse += part.text;
+                    }
+                }
+
+                // Parse JSON from response (strip markdown fences if present)
+                textResponse = textResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+                brandKit = JSON.parse(textResponse);
+
+                progressBar.style.width = '100%';
+                statusText.textContent = '✓ Brand kit extracted!';
+                statusText.style.color = '#34d399';
+
+                // Render swatches
+                const swatchContainer = document.getElementById('brand-swatches');
+                swatchContainer.innerHTML = '';
+                brandKit.colors.forEach((c, i) => {
+                    const sw = document.createElement('div');
+                    sw.className = 'swatch';
+                    sw.style.backgroundColor = c.hex;
+                    sw.title = `${c.role}: ${c.hex}`;
+                    sw.innerHTML = `<span class="swatch-label">${c.role}</span>`;
+                    sw.addEventListener('click', () => {
+                        navigator.clipboard.writeText(c.hex);
+                        sw.classList.add('active');
+                        setTimeout(() => sw.classList.remove('active'), 800);
+                    });
+                    swatchContainer.appendChild(sw);
+                });
+
+                // Render font badges
+                const fontContainer = document.getElementById('brand-fonts');
+                fontContainer.innerHTML = '';
+                brandKit.fonts.forEach(f => {
+                    const badge = document.createElement('div');
+                    badge.className = 'brand-font-badge';
+                    badge.style.fontFamily = `'${f.name}', sans-serif`;
+                    badge.textContent = f.name;
+                    badge.title = `${f.use} — ${f.category}`;
+                    badge.addEventListener('click', () => {
+                        // Set as the text overlay font
+                        const fontSelect = document.getElementById('text-font');
+                        // Add option if not present
+                        let exists = false;
+                        for (const opt of fontSelect.options) {
+                            if (opt.value === f.name) { exists = true; break; }
+                        }
+                        if (!exists) {
+                            const opt = document.createElement('option');
+                            opt.value = f.name;
+                            opt.textContent = `${f.name} (Brand)`;
+                            fontSelect.insertBefore(opt, fontSelect.firstChild);
+                        }
+                        fontSelect.value = f.name;
+                        renderCanvas();
+                    });
+                    fontContainer.appendChild(badge);
+                });
+
+                results.style.display = 'block';
+
+            } catch (err) {
+                console.error('Brand Kit error:', err);
+                progressBar.style.width = '100%';
+                progressBar.style.background = '#ef4444';
+                statusText.textContent = `⚠ Error: ${err.message}`;
+                statusText.style.color = '#ef4444';
+                setTimeout(() => {
+                    progressBar.style.background = 'linear-gradient(90deg, #f472b6, #f97316)';
+                    statusText.style.color = '#f472b6';
+                }, 5000);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🎨 Extract Brand Kit';
+            }
+        });
+
+        // Apply brand kit to text & border
+        document.getElementById('brand-apply-btn')?.addEventListener('click', () => {
+            if (!brandKit) return;
+
+            // Apply primary color to text
+            const primary = brandKit.colors.find(c => c.role === 'primary');
+            const accent = brandKit.colors.find(c => c.role === 'accent' || c.role === 'secondary');
+            const bg = brandKit.colors.find(c => c.role === 'background');
+
+            if (primary) {
+                document.getElementById('text-color').value = primary.hex;
+                document.getElementById('border-color').value = primary.hex;
+            }
+            if (accent) {
+                document.getElementById('border-accent-color').value = accent.hex;
+            }
+
+            // Apply first font
+            if (brandKit.fonts.length > 0) {
+                const fontName = brandKit.fonts[0].name;
+                const fontSelect = document.getElementById('text-font');
+                let exists = false;
+                for (const opt of fontSelect.options) {
+                    if (opt.value === fontName) { exists = true; break; }
+                }
+                if (!exists) {
+                    const opt = document.createElement('option');
+                    opt.value = fontName;
+                    opt.textContent = `${fontName} (Brand)`;
+                    fontSelect.insertBefore(opt, fontSelect.firstChild);
+                    // Load the font dynamically
+                    const link = document.createElement('link');
+                    link.href = `https://fonts.googleapis.com/css2?family=${fontName.replace(/ /g, '+')}:wght@400;700;900&display=swap`;
+                    link.rel = 'stylesheet';
+                    document.head.appendChild(link);
+                }
+                fontSelect.value = fontName;
+            }
+
+            renderCanvas();
+
+            // Visual feedback
+            const btn = document.getElementById('brand-apply-btn');
+            btn.textContent = '✓ Applied!';
+            btn.style.color = '#34d399';
+            btn.style.borderColor = 'rgba(16,185,129,0.3)';
+            setTimeout(() => {
+                btn.textContent = '✓ Apply to Text & Overlays';
+                btn.style.color = '#f472b6';
+                btn.style.borderColor = 'rgba(236,72,153,0.3)';
+            }, 2000);
+        });
+
     </script>
     <script src="config.js" onerror="console.warn('config.js not found — AI Stylize needs GOOGLE_API_KEY')"></script>
 </body>

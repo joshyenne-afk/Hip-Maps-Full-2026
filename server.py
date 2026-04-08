@@ -34,6 +34,15 @@ class HipMapsHandler(http.server.SimpleHTTPRequestHandler):
         else:
             super().do_GET()
 
+    def end_headers(self):
+        """Add no-cache headers for HTML/JS files during development."""
+        path = self.path.split('?')[0]
+        if path.endswith(('.html', '.js', '.css')):
+            self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
+            self.send_header('Pragma', 'no-cache')
+            self.send_header('Expires', '0')
+        super().end_headers()
+
     def do_POST(self):
         if self.path == '/generate-tiles':
             self.handle_generate_tiles()
@@ -147,14 +156,53 @@ class HipMapsHandler(http.server.SimpleHTTPRequestHandler):
         super().end_headers()
 
 
+def upscale_image(input_path, output_path, scale=4):
+    """Upscale an image using Upscayl's bundled Real-ESRGAN binary.
+    
+    Uses the digital-art-4x model which is optimized for illustrated/stylized content.
+    Falls back gracefully if Upscayl is not installed.
+    """
+    upscayl_bin = '/Applications/Upscayl.app/Contents/Resources/bin/upscayl-bin'
+    models_dir = '/Applications/Upscayl.app/Contents/Resources/models'
+    model_name = 'digital-art-4x'
+
+    if not os.path.exists(upscayl_bin):
+        print("⚠️  Upscayl not found — skipping upscale, using original image")
+        shutil.copy(input_path, output_path)
+        return False
+
+    print(f"🔍 Upscaling with {model_name} at {scale}x...")
+    cmd = [
+        upscayl_bin,
+        '-i', input_path,
+        '-o', output_path,
+        '-s', str(scale),
+        '-n', model_name,
+        '-m', models_dir,
+        '-f', 'png',
+        '-v'
+    ]
+
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+    if result.returncode != 0:
+        print(f"⚠️  Upscale failed: {result.stderr}")
+        shutil.copy(input_path, output_path)
+        return False
+
+    upscaled_size = os.path.getsize(output_path) / (1024 * 1024)
+    print(f"   ✅ Upscaled to {upscaled_size:.1f} MB")
+    return True
+
+
 def run_tile_generation(image_b64, bounds, min_zoom, max_zoom):
-    """Run GDAL georeferencing + tile slicing in a background thread."""
+    """Run upscale + GDAL georeferencing + tile slicing in a background thread."""
     global tile_status
 
     project_dir = os.path.dirname(os.path.abspath(__file__))
     tiles_dir = os.path.join(project_dir, 'tiles')
     georef_file = os.path.join(project_dir, 'georeferenced.tif')
     tmp_image = os.path.join(project_dir, '_tmp_tile_source.png')
+    upscaled_image = os.path.join(project_dir, '_tmp_tile_upscaled.png')
 
     try:
         tile_status["progress"] = "Decoding image..."
@@ -167,6 +215,18 @@ def run_tile_generation(image_b64, bounds, min_zoom, max_zoom):
         image_size_mb = len(image_data) / (1024 * 1024)
         print(f"   Image size: {image_size_mb:.1f} MB")
 
+        # Upscale the image 4x before tiling
+        tile_status["progress"] = "Upscaling image 4x with Real-ESRGAN..."
+        print("🧩 Tile Gen: Upscaling image...")
+        upscaled = upscale_image(tmp_image, upscaled_image, scale=4)
+
+        # Use upscaled image for tiling if available, otherwise original
+        tile_source = upscaled_image if upscaled and os.path.exists(upscaled_image) else tmp_image
+        if upscaled:
+            print("   Using 4x upscaled image for tile generation")
+        else:
+            print("   Using original image for tile generation")
+
         tile_status["progress"] = "Georeferencing image with GDAL..."
         print("🧩 Tile Gen: Running gdal_translate...")
 
@@ -175,7 +235,7 @@ def run_tile_generation(image_b64, bounds, min_zoom, max_zoom):
             '-a_ullr', str(bounds['west']), str(bounds['north']),
                        str(bounds['east']), str(bounds['south']),
             '-a_srs', 'EPSG:4326',
-            tmp_image, georef_file
+            tile_source, georef_file
         ]
 
         result = subprocess.run(cmd_georef, capture_output=True, text=True, timeout=60)
@@ -217,8 +277,10 @@ def run_tile_generation(image_b64, bounds, min_zoom, max_zoom):
         else:
             size_str = f"{total_size / 1024:.0f} KB"
 
-        if os.path.exists(tmp_image):
-            os.remove(tmp_image)
+        # Clean up temp files
+        for tmp in (tmp_image, upscaled_image):
+            if os.path.exists(tmp):
+                os.remove(tmp)
 
         tile_status["running"] = False
         tile_status["done"] = True
@@ -235,8 +297,9 @@ def run_tile_generation(image_b64, bounds, min_zoom, max_zoom):
         tile_status["progress"] = f"Error: {str(e)}"
         print(f"🧩 Tile Gen: ❌ Error: {e}")
 
-        if os.path.exists(tmp_image):
-            os.remove(tmp_image)
+        for tmp in (tmp_image, upscaled_image):
+            if os.path.exists(tmp):
+                os.remove(tmp)
 
 
 if __name__ == '__main__':
