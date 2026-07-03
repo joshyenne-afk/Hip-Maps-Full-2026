@@ -1160,7 +1160,11 @@
         function loadStudioHandoff() {
             return new Promise((resolve) => {
                 const open = indexedDB.open('hipmaps-studio', 1);
-                open.onupgradeneeded = () => open.result.createObjectStore('handoff');
+                open.onupgradeneeded = () => {
+                    if (!open.result.objectStoreNames.contains('handoff')) {
+                        open.result.createObjectStore('handoff');
+                    }
+                };
                 open.onerror = () => resolve(null);
                 open.onsuccess = () => {
                     const db = open.result;

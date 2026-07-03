@@ -697,14 +697,23 @@
         function saveStudioHandoff(payload) {
             return new Promise((resolve, reject) => {
                 const open = indexedDB.open('hipmaps-studio', 1);
-                open.onupgradeneeded = () => open.result.createObjectStore('handoff');
+                open.onupgradeneeded = () => {
+                    if (!open.result.objectStoreNames.contains('handoff')) {
+                        open.result.createObjectStore('handoff');
+                    }
+                };
                 open.onerror = () => reject(open.error);
                 open.onsuccess = () => {
                     const db = open.result;
-                    const tx = db.transaction('handoff', 'readwrite');
-                    tx.objectStore('handoff').put(payload, 'current');
-                    tx.oncomplete = () => { db.close(); resolve(); };
-                    tx.onerror = () => { db.close(); reject(tx.error); };
+                    try {
+                        const tx = db.transaction('handoff', 'readwrite');
+                        tx.objectStore('handoff').put(payload, 'current');
+                        tx.oncomplete = () => { db.close(); resolve(); };
+                        tx.onerror = () => { db.close(); reject(tx.error); };
+                    } catch (e) {
+                        db.close();
+                        reject(e);
+                    }
                 };
             });
         }
