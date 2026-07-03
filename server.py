@@ -14,6 +14,22 @@ import threading
 
 PORT = 8080
 
+
+def _get_gemini_key():
+    """Read GEMINI_API_KEY from env var, falling back to parsing config.js."""
+    key = os.environ.get('GEMINI_API_KEY', '').strip()
+    if key:
+        return key
+    config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.js')
+    if os.path.exists(config_path):
+        with open(config_path) as f:
+            for line in f:
+                m = re.search(r'GEMINI_API_KEY\s*=\s*["\']([^"\']+)["\']', line)
+                if m:
+                    return m.group(1)
+    return None
+
+
 # Track tile generation status
 tile_status = {
     "running": False,
@@ -174,6 +190,7 @@ class HipMapsHandler(http.server.SimpleHTTPRequestHandler):
 
             image_b64 = data.get('image')
             bounds = data.get('bounds')
+            venues = data.get('venues', [])
             min_zoom = data.get('minZoom', 10)
             max_zoom = data.get('maxZoom', 14)
 
@@ -183,6 +200,15 @@ class HipMapsHandler(http.server.SimpleHTTPRequestHandler):
 
             if ',' in image_b64:
                 image_b64 = image_b64.split(',', 1)[1]
+
+            # Save venues.json directly into public/ so the deploy picks it up (no staging step).
+            project_dir = os.path.dirname(os.path.abspath(__file__))
+            public_dir = os.path.join(project_dir, 'public')
+            os.makedirs(public_dir, exist_ok=True)
+            venues_file = os.path.join(public_dir, 'venues.json')
+            with open(venues_file, 'w') as vf:
+                json.dump(venues, vf, indent=2)
+            print(f"📍 Saved {len(venues)} venues to {venues_file}")
 
             tile_status = {
                 "running": True,
@@ -288,7 +314,9 @@ def run_tile_generation(image_b64, bounds, min_zoom, max_zoom):
     global tile_status
 
     project_dir = os.path.dirname(os.path.abspath(__file__))
-    tiles_dir = os.path.join(project_dir, 'tiles')
+    public_dir = os.path.join(project_dir, 'public')
+    os.makedirs(public_dir, exist_ok=True)
+    tiles_dir = os.path.join(public_dir, 'tiles')  # write straight into public/ for firebase deploy
     georef_file = os.path.join(project_dir, 'georeferenced.tif')
     tmp_image = os.path.join(project_dir, '_tmp_tile_source.png')
     upscaled_image = os.path.join(project_dir, '_tmp_tile_upscaled.png')
@@ -372,6 +400,24 @@ def run_tile_generation(image_b64, bounds, min_zoom, max_zoom):
             size_str = f"{total_size / (1024*1024):.1f} MB"
         else:
             size_str = f"{total_size / 1024:.0f} KB"
+
+        # Save bounds metadata into public/ for the viewer
+        bounds_meta = {
+            "north": bounds['north'],
+            "south": bounds['south'],
+            "east": bounds['east'],
+            "west": bounds['west'],
+            "center": {
+                "lat": (bounds['north'] + bounds['south']) / 2,
+                "lng": (bounds['east'] + bounds['west']) / 2
+            },
+            "zoom": min_zoom,
+            "maxZoom": max_zoom
+        }
+        bounds_file = os.path.join(public_dir, 'bounds.json')
+        with open(bounds_file, 'w') as bf:
+            json.dump(bounds_meta, bf, indent=2)
+        print(f"   Saved: {bounds_file}")
 
         # Clean up temp files
         for tmp in (tmp_image, upscaled_image):

@@ -1,8 +1,17 @@
-# Generated map tiles (large number of files)
+# Generated map tiles (large number of files) — build output, deploy reads them off disk
 tiles/
 tiles_new/
 tiles_old/
 tiles*/
+public/tiles/
+
+# Firebase deploy cache
+.firebase/
+
+# Local scratch / experiment artifacts
+dummy*.png
+poc_*.png
+public/clean_base_map.png
 
 # Geo-referenced TIFF files (typically large)
 *.tif
