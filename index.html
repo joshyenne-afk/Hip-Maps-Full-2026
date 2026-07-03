@@ -475,7 +475,7 @@
                                 </button>
                             </div>
 
-                            <p class="text-xs text-slate-500">Powered by <strong class="text-slate-400">Gemini 3 Flash</strong> vision. Works with screenshots, printed lists, flyers, menus, and more.</p>
+                            <p class="text-xs text-slate-500">Powered by <strong class="text-slate-400">Gemini 3.5 Flash</strong> vision. Works with screenshots, printed lists, flyers, menus, and more.</p>
                         </div>
 
                         <!-- ── Manual Entry (default visible) ── -->
@@ -625,6 +625,18 @@
                     </details>
 
                     <!-- ── Capture & Send to Studio ── -->
+                    <div class="flex justify-between items-center mb-1.5">
+                        <label for="capture-res" class="text-[10px] text-slate-400 font-medium">Capture resolution</label>
+                        <select id="capture-res" class="bg-black/30 border border-white/10 text-slate-300 text-[10px] rounded-lg px-2 py-1">
+                            <option value="1">Standard · 1280px</option>
+                            <option value="2" selected>High · 2560px (2×2 stitch)</option>
+                            <option value="4">Ultra · 5120px (4×4 stitch)</option>
+                        </select>
+                    </div>
+                    <label class="flex items-center gap-1.5 mb-1.5 text-[10px] text-slate-400 cursor-pointer">
+                        <input type="checkbox" id="capture-include-pins" class="accent-[#F26522]">
+                        Bake numbered pins into capture <span class="text-slate-600">(Studio draws its own pins)</span>
+                    </label>
                     <button id="generate-ref-image"
                         class="w-full bg-gradient-to-r from-secondary to-[#4a4dc7] text-white font-bold py-2.5 px-4 rounded-xl hover:from-[#242775] hover:to-[#3a3db7] transition-all shadow-md flex items-center justify-center gap-2 text-sm">
                         📸 Capture This View
@@ -672,6 +684,31 @@
         let initialBounds = null;
         let tileOverlay = null;
 
+        // ── Shared config ──
+        const GEMINI_TEXT_MODEL = 'gemini-3.5-flash';
+        function getGeminiKey() {
+            if (typeof GEMINI_API_KEY !== 'undefined' && GEMINI_API_KEY) return GEMINI_API_KEY;
+            if (typeof GOOGLE_API_KEY !== 'undefined' && GOOGLE_API_KEY) return GOOGLE_API_KEY;
+            if (window.CONFIG && window.CONFIG.GEMINI_API_KEY) return window.CONFIG.GEMINI_API_KEY;
+            return null;
+        }
+
+        // ── IndexedDB hand-off to Studio (hi-res captures exceed the sessionStorage quota) ──
+        function saveStudioHandoff(payload) {
+            return new Promise((resolve, reject) => {
+                const open = indexedDB.open('hipmaps-studio', 1);
+                open.onupgradeneeded = () => open.result.createObjectStore('handoff');
+                open.onerror = () => reject(open.error);
+                open.onsuccess = () => {
+                    const db = open.result;
+                    const tx = db.transaction('handoff', 'readwrite');
+                    tx.objectStore('handoff').put(payload, 'current');
+                    tx.oncomplete = () => { db.close(); resolve(); };
+                    tx.onerror = () => { db.close(); reject(tx.error); };
+                };
+            });
+        }
+
         async function initMap() {
             const defaultCenter = { lat: 39.8283, lng: -98.5795 }; // Center of USA
             const { Map } = await google.maps.importLibrary("maps");
@@ -692,8 +729,15 @@
             document.getElementById('toggle-overlay').addEventListener('change', toggleOverlay);
             document.getElementById('overlay-opacity').addEventListener('input', updateOverlayOpacity);
 
-            // Pre-load the tile overlay object but don't add to map yet
-            loadTiles();
+            // Reflect the selected capture resolution in the info panel
+            const captureResSelect = document.getElementById('capture-res');
+            captureResSelect?.addEventListener('change', () => {
+                const n = parseInt(captureResSelect.value, 10) || 1;
+                const px = 1280 * n;
+                const refSize = document.getElementById('ref-size');
+                if (refSize) refSize.textContent = `${px} × ${px} px`;
+            });
+            captureResSelect?.dispatchEvent(new Event('change'));
 
             document.getElementById('process-button').addEventListener('click', processLocations);
             // Listener moved to setupFileUpload to avoid duplicates
@@ -703,11 +747,6 @@
             document.getElementById('save-project-button').addEventListener('click', saveProject);
             document.getElementById('start-over-btn').addEventListener('click', () => location.reload());
             setupFileUpload();
-        }
-
-        function loadTiles() {
-            // This was the old tile-based overlay. Now handled via GroundOverlay
-            // from the captured map image. See toggleOverlay().
         }
 
         let groundOverlayObj = null;
@@ -975,7 +1014,13 @@ if (typeof updateRefImageInfo === 'function') updateRefImageInfo();
             btn.innerHTML = '<div class="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div> Scanning';
             btn.disabled = true;
 
-            const apiKey = window.CONFIG.GEMINI_API_KEY;
+            const apiKey = getGeminiKey();
+            if (!apiKey) {
+                alert('No Gemini API key found. Add GEMINI_API_KEY (or GOOGLE_API_KEY) to config.js');
+                btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 1 1-6.219-8.56"/><path d="M21 3v5h-5"/></svg> Extract';
+                btn.disabled = false;
+                return;
+            }
 
             try {
                 // 1. Fetch text via proxy
@@ -1002,7 +1047,7 @@ The Art Museum | Featuring modern and contemporary works.
 Text from ${url}:
 ${data.text}`;
 
-                const apiCall = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`, {
+                const apiCall = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_TEXT_MODEL}:generateContent?key=${apiKey}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -1269,10 +1314,10 @@ ${data.text}`;
                 document.getElementById('ocr-file-name').textContent = file.name;
 
                 try {
-                    // Determine the correct model
-                    const model = 'gemini-3-flash-preview';
+                    const apiKey = getGeminiKey();
+                    if (!apiKey) throw new Error('No Gemini API key found. Add GEMINI_API_KEY (or GOOGLE_API_KEY) to config.js');
 
-                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_TEXT_MODEL}:generateContent?key=${apiKey}`;
 
                     const prompt = `You are an expert location extraction assistant. Analyze this image and extract ALL location names, place names, venue names, restaurant names, business names, addresses, or any identifiable geographical places.
 
@@ -2267,7 +2312,78 @@ Joe's Pizza, NYC | Best deep dish in Manhattan`;
             updateLiveViewportInfo(); 
         }
 
-        function generateReferenceImage() {
+        // ── Web-Mercator world-pixel helpers (TILE=256 world coordinates) ──
+        function latLngToWorld(lat, lng) {
+            const TILE = 256;
+            const sinLat = Math.sin(lat * Math.PI / 180);
+            return {
+                x: TILE * (0.5 + lng / 360),
+                y: TILE * (0.5 - Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI))
+            };
+        }
+
+        function worldToLatLng(x, y) {
+            const TILE = 256;
+            return {
+                lat: Math.atan(Math.sinh(Math.PI * (1 - 2 * y / TILE))) * 180 / Math.PI,
+                lng: (x / TILE - 0.5) * 360
+            };
+        }
+
+        // ── Compute TRUE Static Map bounds using Mercator math ──
+        // The Static Maps API renders from center+zoom+size, NOT from
+        // the interactive viewport bounds. We must replicate Google's
+        // tile math to get pixel-accurate georef bounds.
+        function staticMapBounds(centerLat, centerLng, zoom, widthPx, heightPx) {
+            const zScale = Math.pow(2, zoom);
+            const centerWorld = latLngToWorld(centerLat, centerLng);
+            // Half-size in world-pixels at this zoom
+            const halfW = (widthPx / 2) / zScale;
+            const halfH = (heightPx / 2) / zScale;
+            const nw = worldToLatLng(centerWorld.x - halfW, centerWorld.y - halfH);
+            const se = worldToLatLng(centerWorld.x + halfW, centerWorld.y + halfH);
+            return { north: nw.lat, south: se.lat, east: se.lng, west: nw.lng };
+        }
+
+        // Draw crisp numbered venue pins onto the stitched capture. Replaces the
+        // Static Maps `markers=` params, whose labels only support a single
+        // character (venues 10+ rendered wrong) and don't scale with resolution.
+        function drawVenuePins(ctx, bounds, w, h) {
+            const tl = latLngToWorld(bounds.north, bounds.west);
+            const br = latLngToWorld(bounds.south, bounds.east);
+            const venues = locationsData.filter(l => l.lat && l.lng);
+            const r = Math.max(14, Math.round(w / 90));
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            venues.forEach((v, i) => {
+                const wp = latLngToWorld(v.lat, v.lng);
+                const x = (wp.x - tl.x) / (br.x - tl.x) * w;
+                const y = (wp.y - tl.y) / (br.y - tl.y) * h;
+                if (x < -r || y < -r || x > w + r || y > h + r) return;
+                ctx.beginPath();
+                ctx.arc(x, y, r, 0, Math.PI * 2);
+                ctx.fillStyle = '#EA4335';
+                ctx.fill();
+                ctx.lineWidth = Math.max(2, r / 7);
+                ctx.strokeStyle = '#ffffff';
+                ctx.stroke();
+                ctx.fillStyle = '#ffffff';
+                ctx.font = `bold ${Math.round(r * 1.05)}px Arial`;
+                ctx.fillText(String(i + 1), x, y);
+            });
+        }
+
+        function loadProxiedImage(url) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = () => resolve(img);
+                img.onerror = () => reject(new Error('Failed to load Static Maps image via proxy'));
+                img.src = '/proxy?url=' + encodeURIComponent(url);
+            });
+        }
+
+        async function generateReferenceImage() {
             if (!map) {
                 showModal('Map is not loaded yet.');
                 return;
@@ -2285,8 +2401,6 @@ Joe's Pizza, NYC | Best deep dish in Manhattan`;
 
             const centerLat = center.lat();
             const centerLng = center.lng();
-            const ne = mapBounds.getNorthEast();
-            const sw = mapBounds.getSouthWest();
 
             // Show capturing state
             const captureBtn = document.getElementById('generate-ref-image');
@@ -2294,10 +2408,17 @@ Joe's Pizza, NYC | Best deep dish in Manhattan`;
             captureBtn.textContent = '⏳ Capturing...';
             captureBtn.disabled = true;
 
-            // Static Maps: 640x640 at scale 2 = 1280x1280 pixels
+            // Static Maps: 640x640 at scale 2 = 1280x1280 pixels per request.
+            // For higher resolution we capture an N×N grid at zoom+log2(N)
+            // (same geographic coverage, N× the pixel density) and stitch.
             const useWidth = 640;
             const useHeight = 640;
             const scale = 2;
+
+            let gridN = parseInt(document.getElementById('capture-res')?.value || '1', 10);
+            // Static Maps roadmap imagery tops out around zoom 21
+            while (gridN > 1 && zoom + Math.log2(gridN) > 21) gridN /= 2;
+            const subZoom = zoom + Math.log2(gridN);
 
             // Build style parameters: clean map (no labels, no POI)
             const captureStyles = [
@@ -2305,62 +2426,17 @@ Joe's Pizza, NYC | Best deep dish in Manhattan`;
                 'style=feature:administrative|element:geometry|visibility:off',
                 'style=feature:poi|element:all|visibility:off'
             ];
-            let styleParams = captureStyles.join('&');
+            const styleParams = captureStyles.join('&');
 
-            // Build marker params from current venue pins
-            let markerParams = '';
-            if (markers.length > 0) {
-                const markerCoords = markers.map((m, i) => {
-                    const pos = m.marker.position || m.marker.getPosition();
-                    const lat = typeof pos.lat === 'function' ? pos.lat() : pos.lat;
-                    const lng = typeof pos.lng === 'function' ? pos.lng() : pos.lng;
-                    return `markers=color:red|label:${i + 1}|${lat},${lng}`;
-                });
-                markerParams = '&' + markerCoords.join('&');
-            }
-
-            let staticMapUrl = `https://maps.googleapis.com/maps/api/staticmap?` +
-                `center=${centerLat.toFixed(6)},${centerLng.toFixed(6)}` +
-                `&zoom=${zoom}` +
+            const buildSubUrl = (lat, lng) =>
+                `https://maps.googleapis.com/maps/api/staticmap?` +
+                `center=${lat.toFixed(6)},${lng.toFixed(6)}` +
+                `&zoom=${subZoom}` +
                 `&size=${useWidth}x${useHeight}` +
                 `&scale=${scale}` +
                 `&maptype=roadmap` +
-                `&key=${GOOGLE_API_KEY}`;
-
-            staticMapUrl += '&' + styleParams;
-            if (markerParams) staticMapUrl += markerParams;
-
-            // ── Compute TRUE Static Map bounds using Mercator math ──
-            // The Static Maps API renders from center+zoom+size, NOT from
-            // the interactive viewport bounds. We must replicate Google's
-            // tile math to get pixel-accurate georef bounds.
-            function staticMapBounds(centerLat, centerLng, zoom, widthPx, heightPx) {
-                const TILE = 256;
-                const scale = Math.pow(2, zoom);
-                // World-pixel coordinates of the center
-                const centerWorldX = TILE * (0.5 + centerLng / 360);
-                const sinLat = Math.sin(centerLat * Math.PI / 180);
-                const centerWorldY = TILE * (0.5 - Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI));
-                // Half-size in world-pixels at this zoom
-                const halfW = (widthPx / 2) / scale;
-                const halfH = (heightPx / 2) / scale;
-                // Corner world-pixel coords
-                const westWorldX = centerWorldX - halfW;
-                const eastWorldX = centerWorldX + halfW;
-                const northWorldY = centerWorldY - halfH;
-                const southWorldY = centerWorldY + halfH;
-                // Convert back to lat/lng
-                const west = (westWorldX / TILE - 0.5) * 360;
-                const east = (eastWorldX / TILE - 0.5) * 360;
-                const northLatRad = Math.atan(Math.sinh(Math.PI * (1 - 2 * northWorldY / TILE)));
-                const southLatRad = Math.atan(Math.sinh(Math.PI * (1 - 2 * southWorldY / TILE)));
-                return {
-                    north: northLatRad * 180 / Math.PI,
-                    south: southLatRad * 180 / Math.PI,
-                    east: east,
-                    west: west
-                };
-            }
+                `&key=${GOOGLE_API_KEY}` +
+                '&' + styleParams;
 
             // Use the image pixel dimensions (before scale — Static Maps uses `size` param which is pre-scale)
             const trueBounds = staticMapBounds(centerLat, centerLng, zoom, useWidth, useHeight);
@@ -2369,7 +2445,7 @@ Joe's Pizza, NYC | Best deep dish in Manhattan`;
                 bounds: trueBounds,
                 center: { lat: centerLat, lng: centerLng },
                 zoom: zoom,
-                imageDimensions: { width: useWidth * scale, height: useHeight * scale },
+                imageDimensions: { width: useWidth * scale * gridN, height: useHeight * scale * gridN },
                 venues: locationsData.filter(l => l.lat && l.lng).map(l => ({
                     name: l.inputName || l.name,
                     lat: l.lat,
@@ -2382,19 +2458,41 @@ Joe's Pizza, NYC | Best deep dish in Manhattan`;
             lastCaptureBounds = boundsData.bounds;
             console.log('📐 True Static Map bounds:', JSON.stringify(trueBounds, null, 2));
 
-            // Fetch via local proxy to get CORS-safe image, then convert to base64
-            const proxyUrl = '/proxy?url=' + encodeURIComponent(staticMapUrl);
-            const img = new Image();
-            img.crossOrigin = 'anonymous';
-            img.onload = () => {
-                // Draw to canvas and convert to base64
-                const cvs = document.createElement('canvas');
-                cvs.width = img.naturalWidth;
-                cvs.height = img.naturalHeight;
-                const ctx = cvs.getContext('2d');
-                ctx.drawImage(img, 0, 0);
-                const dataUrl = cvs.toDataURL('image/png');
+            try {
+                // Sub-capture centers in world coordinates: the full capture spans
+                // useWidth/2^zoom world units; each sub-capture spans 1/gridN of it.
+                const centerWorld = latLngToWorld(centerLat, centerLng);
+                const subSpanWorld = useWidth / Math.pow(2, subZoom);
 
+                const fetches = [];
+                for (let row = 0; row < gridN; row++) {
+                    for (let col = 0; col < gridN; col++) {
+                        const c = worldToLatLng(
+                            centerWorld.x + (col - (gridN - 1) / 2) * subSpanWorld,
+                            centerWorld.y + (row - (gridN - 1) / 2) * subSpanWorld
+                        );
+                        fetches.push(loadProxiedImage(buildSubUrl(c.lat, c.lng)));
+                    }
+                }
+                const imgs = await Promise.all(fetches);
+
+                // Stitch onto one canvas
+                const tilePx = useWidth * scale;
+                const cvs = document.createElement('canvas');
+                cvs.width = tilePx * gridN;
+                cvs.height = tilePx * gridN;
+                const ctx = cvs.getContext('2d');
+                imgs.forEach((img, i) => {
+                    const row = Math.floor(i / gridN);
+                    const col = i % gridN;
+                    ctx.drawImage(img, col * tilePx, row * tilePx, tilePx, tilePx);
+                });
+
+                if (document.getElementById('capture-include-pins')?.checked) {
+                    drawVenuePins(ctx, trueBounds, cvs.width, cvs.height);
+                }
+
+                const dataUrl = cvs.toDataURL('image/png');
                 console.log('✓ Captured styled map as base64 (' + Math.round(dataUrl.length / 1024) + ' KB)');
 
                 // Show inline preview
@@ -2403,69 +2501,70 @@ Joe's Pizza, NYC | Best deep dish in Manhattan`;
                 const captureInfo = document.getElementById('capture-info');
 
                 previewImg.src = dataUrl;
-                captureInfo.textContent = `Zoom ${zoom} · Center ${centerLat.toFixed(4)}, ${centerLng.toFixed(4)} · ${markers.length} venue(s) · ${img.naturalWidth}×${img.naturalHeight}px`;
+                captureInfo.textContent = `Zoom ${zoom} · Center ${centerLat.toFixed(4)}, ${centerLng.toFixed(4)} · ${markers.length} venue(s) · ${cvs.width}×${cvs.height}px${gridN > 1 ? ` (${gridN}×${gridN} stitch)` : ''}`;
                 previewSection.classList.remove('hidden');
 
                 // Georef data is stored for Studio handoff (no download needed)
-
-                // Scroll to preview
                 previewSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-
-                // Restore button
-                captureBtn.textContent = origText;
-                captureBtn.disabled = false;
-            };
-            img.onerror = () => {
-                console.error('Failed to load Static Maps image via proxy');
+            } catch (err) {
+                console.error('Capture failed:', err);
                 showModal('Capture failed. Make sure server.py is running (python3 server.py)');
+            } finally {
                 captureBtn.textContent = origText;
                 captureBtn.disabled = false;
-            };
-            img.src = proxyUrl;
+            }
         }
 
         document.getElementById('generate-ref-image').addEventListener('click', generateReferenceImage);
 
-        // ============ OPEN IN STUDIO (sessionStorage handoff) ============
-        document.getElementById('open-in-studio-btn')?.addEventListener('click', () => {
+        // ============ OPEN IN STUDIO (IndexedDB handoff) ============
+        document.getElementById('open-in-studio-btn')?.addEventListener('click', async () => {
             const previewImg = document.getElementById('capture-preview-img');
             if (!previewImg || !previewImg.src || previewImg.src === 'data:,') {
                 showModal('Please capture the map view first.');
                 return;
             }
+            if (!lastCaptureBounds) {
+                showModal('Capture bounds missing. Please capture the map view again.');
+                return;
+            }
 
-            // Save captured image + metadata to sessionStorage for Studio
+            // The georef bounds MUST be the pixel-accurate bounds of the captured
+            // Static Map image (lastCaptureBounds), NOT map.getBounds() — the
+            // interactive viewport covers a different rectangle than the capture.
+            const payload = {
+                image: previewImg.src,
+                venues: locationsData.filter(l => l.lat && l.lng).map(l => ({
+                    name: l.inputName || l.officialName,
+                    lat: l.lat,
+                    lng: l.lng
+                })),
+                bounds: lastCaptureBounds,
+                zoom: map.getZoom(),
+                center: { lat: map.getCenter().lat(), lng: map.getCenter().lng() },
+                timestamp: new Date().toISOString()
+            };
+
             try {
-                sessionStorage.setItem('studioMapImage', previewImg.src);
-                sessionStorage.setItem('studioVenues', JSON.stringify(
-                    locationsData.filter(l => l.lat && l.lng).map(l => ({
-                        name: l.inputName || l.officialName,
-                        lat: l.lat,
-                        lng: l.lng
-                    }))
-                ));
-
-                const mapBounds = map.getBounds();
-                if (mapBounds) {
-                    const ne = mapBounds.getNorthEast();
-                    const sw = mapBounds.getSouthWest();
-                    sessionStorage.setItem('studioBounds', JSON.stringify({
-                        north: ne.lat(), south: sw.lat(),
-                        east: ne.lng(), west: sw.lng()
-                    }));
-                }
-
-                sessionStorage.setItem('studioZoom', map.getZoom());
-                sessionStorage.setItem('studioCenter', JSON.stringify({
-                    lat: map.getCenter().lat(),
-                    lng: map.getCenter().lng()
-                }));
-
-                console.log('✓ Saved map data to sessionStorage for Studio');
+                await saveStudioHandoff(payload);
+                // Clear any stale sessionStorage handoff so Studio doesn't pick it up
+                ['studioMapImage', 'studioVenues', 'studioBounds', 'studioZoom', 'studioCenter']
+                    .forEach(k => sessionStorage.removeItem(k));
+                console.log('✓ Saved map data to IndexedDB for Studio');
                 window.location.href = 'studio.html';
             } catch (e) {
-                console.error('Failed to save to sessionStorage:', e);
-                showModal('Image too large for sessionStorage. Try downloading and loading in Studio manually.');
+                console.error('IndexedDB handoff failed, falling back to sessionStorage:', e);
+                try {
+                    sessionStorage.setItem('studioMapImage', payload.image);
+                    sessionStorage.setItem('studioVenues', JSON.stringify(payload.venues));
+                    sessionStorage.setItem('studioBounds', JSON.stringify(payload.bounds));
+                    sessionStorage.setItem('studioZoom', payload.zoom);
+                    sessionStorage.setItem('studioCenter', JSON.stringify(payload.center));
+                    window.location.href = 'studio.html';
+                } catch (e2) {
+                    console.error('Failed to save handoff:', e2);
+                    showModal('Image too large to hand off. Try a lower capture resolution.');
+                }
             }
         });
 
