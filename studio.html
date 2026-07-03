@@ -1156,6 +1156,7 @@
         // ============ Auto-load from Pinpointer (IndexedDB handoff) ============
         // Persist bounds in memory so tile gen can use them after the handoff loads
         window.mapBoundsData = null;
+        window.mapVenues = [];
 
         function loadStudioHandoff() {
             return new Promise((resolve) => {
@@ -1209,6 +1210,7 @@
                     window.mapBoundsData = handoff.bounds;
                     console.log('✓ Saved map bounds for tile gen:', window.mapBoundsData);
                 }
+                if (handoff.venues) window.mapVenues = handoff.venues;
                 applyHandoffImage(handoff.image, 'Pinpointer capture');
                 return;
             }
@@ -1221,6 +1223,10 @@
             if (boundsRaw) {
                 window.mapBoundsData = JSON.parse(boundsRaw);
                 console.log('✓ Saved map bounds for tile gen:', window.mapBoundsData);
+            }
+            const venuesRaw = sessionStorage.getItem('studioVenues');
+            if (venuesRaw) {
+                try { window.mapVenues = JSON.parse(venuesRaw); } catch (e) { /* ignore */ }
             }
             applyHandoffImage(dataUrl, 'Pinpointer capture');
             sessionStorage.removeItem('studioMapImage');
@@ -1948,6 +1954,7 @@
                     body: JSON.stringify({
                         image: base64,
                         bounds: bounds,
+                        venues: window.mapVenues || [],
                         minZoom: 10,
                         maxZoom: 15
                     })
