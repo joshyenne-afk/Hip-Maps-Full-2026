@@ -94,7 +94,7 @@ echo -e "${GREEN}Created:${NC} $GEOREF_FILE"
 # Step 2: Generate tiles
 echo ""
 echo -e "${YELLOW}Step 2: Generating tiles (zoom $MIN_ZOOM-$MAX_ZOOM)...${NC}"
-gdal2tiles.py -z "$MIN_ZOOM-$MAX_ZOOM" -w none --xyz "$GEOREF_FILE" "$OUTPUT_DIR"
+gdal2tiles.py -z "$MIN_ZOOM-$MAX_ZOOM" -w none --xyz --processes=4 -r lanczos "$GEOREF_FILE" "$OUTPUT_DIR"
 
 # Count tiles
 TILE_COUNT=$(find "$OUTPUT_DIR" -name "*.png" | wc -l | tr -d ' ')

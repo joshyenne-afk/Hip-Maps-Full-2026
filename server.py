@@ -36,7 +36,8 @@ class HipMapsHandler(http.server.SimpleHTTPRequestHandler):
             super().do_GET()
 
     def end_headers(self):
-        """Add no-cache headers for HTML/JS files during development."""
+        """Add CORS + no-cache headers (no-cache only for HTML/JS/CSS during development)."""
+        self.send_header('Access-Control-Allow-Origin', '*')
         path = self.path.split('?')[0]
         if path.endswith(('.html', '.js', '.css')):
             self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
@@ -209,23 +210,52 @@ class HipMapsHandler(http.server.SimpleHTTPRequestHandler):
             tile_status["error"] = str(e)
             self.send_error(500, f'Error: {str(e)}')
 
-    def end_headers(self):
-        self.send_header('Access-Control-Allow-Origin', '*')
-        super().end_headers()
+
+def png_dimensions(path):
+    """Read width/height from a PNG header (no PIL dependency). Returns (w, h) or None."""
+    try:
+        with open(path, 'rb') as f:
+            header = f.read(26)
+        if header[:8] != b'\x89PNG\r\n\x1a\n':
+            return None
+        width = int.from_bytes(header[16:20], 'big')
+        height = int.from_bytes(header[20:24], 'big')
+        return (width, height)
+    except Exception:
+        return None
+
+
+def pick_upscale_factor(input_path, requested=4):
+    """Pick an upscale factor based on source resolution.
+
+    Hi-res stitched/AI captures (2K-4K) don't need the full 4x — it just
+    creates multi-hundred-MB TIFFs without adding real detail.
+    """
+    dims = png_dimensions(input_path)
+    if not dims:
+        return requested
+    longest = max(dims)
+    if longest >= 4096:
+        return 1  # already 4K+: skip upscaling
+    if longest >= 2048:
+        return 2
+    return requested
 
 
 def upscale_image(input_path, output_path, scale=4):
     """Upscale an image using Upscayl's bundled Real-ESRGAN binary.
-    
+
     Uses the digital-art-4x model which is optimized for illustrated/stylized content.
-    Falls back gracefully if Upscayl is not installed.
+    Paths/model are overridable via UPSCAYL_BIN, UPSCAYL_MODELS_DIR, UPSCAYL_MODEL
+    environment variables. Falls back gracefully if Upscayl is not installed.
     """
-    upscayl_bin = '/Applications/Upscayl.app/Contents/Resources/bin/upscayl-bin'
-    models_dir = '/Applications/Upscayl.app/Contents/Resources/models'
-    model_name = 'digital-art-4x'
+    upscayl_bin = os.environ.get('UPSCAYL_BIN', '/Applications/Upscayl.app/Contents/Resources/bin/upscayl-bin')
+    models_dir = os.environ.get('UPSCAYL_MODELS_DIR', '/Applications/Upscayl.app/Contents/Resources/models')
+    model_name = os.environ.get('UPSCAYL_MODEL', 'digital-art-4x')
 
     if not os.path.exists(upscayl_bin):
         print("⚠️  Upscayl not found — skipping upscale, using original image")
+        tile_status["progress"] = "⚠️ Upscayl not found — tiling WITHOUT upscale (quality may suffer). Set UPSCAYL_BIN to fix."
         shutil.copy(input_path, output_path)
         return False
 
@@ -241,9 +271,10 @@ def upscale_image(input_path, output_path, scale=4):
         '-v'
     ]
 
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
     if result.returncode != 0:
         print(f"⚠️  Upscale failed: {result.stderr}")
+        tile_status["progress"] = "⚠️ Upscale failed — tiling with the original image (see server log)."
         shutil.copy(input_path, output_path)
         return False
 
@@ -273,15 +304,20 @@ def run_tile_generation(image_b64, bounds, min_zoom, max_zoom):
         image_size_mb = len(image_data) / (1024 * 1024)
         print(f"   Image size: {image_size_mb:.1f} MB")
 
-        # Upscale the image 4x before tiling
-        tile_status["progress"] = "Upscaling image 4x with Real-ESRGAN..."
-        print("🧩 Tile Gen: Upscaling image...")
-        upscaled = upscale_image(tmp_image, upscaled_image, scale=4)
+        # Upscale before tiling — factor adapts to source resolution
+        scale_factor = pick_upscale_factor(tmp_image, requested=4)
+        if scale_factor > 1:
+            tile_status["progress"] = f"Upscaling image {scale_factor}x with Real-ESRGAN..."
+            print(f"🧩 Tile Gen: Upscaling image {scale_factor}x...")
+            upscaled = upscale_image(tmp_image, upscaled_image, scale=scale_factor)
+        else:
+            print("🧩 Tile Gen: Source is already 4K+ — skipping upscale")
+            upscaled = False
 
         # Use upscaled image for tiling if available, otherwise original
         tile_source = upscaled_image if upscaled and os.path.exists(upscaled_image) else tmp_image
         if upscaled:
-            print("   Using 4x upscaled image for tile generation")
+            print(f"   Using {scale_factor}x upscaled image for tile generation")
         else:
             print("   Using original image for tile generation")
 
@@ -315,10 +351,12 @@ def run_tile_generation(image_b64, bounds, min_zoom, max_zoom):
             '-z', f'{min_zoom}-{max_zoom}',
             '-w', 'none',
             '--xyz',
+            '--processes=4',
+            '-r', 'lanczos',
             georef_file, tiles_dir
         ]
 
-        result = subprocess.run(cmd_tiles, capture_output=True, text=True, timeout=300)
+        result = subprocess.run(cmd_tiles, capture_output=True, text=True, timeout=900)
         if result.returncode != 0:
             raise RuntimeError(f"gdal2tiles.py failed: {result.stderr}")
 

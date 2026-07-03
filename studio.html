@@ -650,6 +650,14 @@
                         placeholder="Describe the artistic style you want..."
                         style="resize: vertical; min-height: 60px;"></textarea>
                 </div>
+                <div style="margin-bottom: 12px;">
+                    <label style="display: block; font-size: 0.7rem; font-weight: 600; color: #94a3b8; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.6px;">Output Quality</label>
+                    <select id="ai-quality" class="studio-select" title="AI model and output resolution">
+                        <option value="flash-1K">⚡ Fast draft · Nano Banana 2 · 1K</option>
+                        <option value="flash-2K" selected>✨ High · Nano Banana 2 · 2K</option>
+                        <option value="pro-4K">💎 Best · Nano Banana Pro · 4K</option>
+                    </select>
+                </div>
                 <button id="ai-stylize-btn" class="btn-primary" style="width: 100%; font-size: 0.9rem; position: relative; overflow: hidden;" disabled>
                     🤖 Generate AI Style
                 </button>
@@ -666,7 +674,7 @@
                     </div>
                 </div>
                 <p style="font-size: 0.67rem; color: #475569; margin-top: 8px; text-align: center;">
-                    Powered by Nano Banana 2 (Gemini 3.1 Flash) · 4K output
+                    Powered by Nano Banana 2 / Pro (Gemini image models) · up to 4K output
                 </p>
             </div>
 
@@ -855,13 +863,16 @@
                     <button id="ai-border-gen-btn" class="btn-primary" style="width: 100%; font-size: 0.82rem; background: linear-gradient(135deg, #fbbf24, #f97316);" disabled>
                         🎨 Generate AI Border
                     </button>
+                    <button id="ai-border-remove-btn" class="btn-secondary" style="width: 100%; font-size: 0.75rem; margin-top: 6px; display: none;">
+                        ✗ Remove Border
+                    </button>
                     <div id="ai-border-progress" style="display: none; margin-top: 8px;">
                         <div style="height: 3px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden;">
                             <div id="ai-border-progress-bar" style="height: 100%; width: 0%; background: linear-gradient(90deg, #fbbf24, #f97316); border-radius: 2px; transition: width 0.5s ease;"></div>
                         </div>
                         <p id="ai-border-status" style="font-size: 0.7rem; color: #fbbf24; margin-top: 4px; text-align: center;">Generating border...</p>
                     </div>
-                    <p style="font-size: 0.63rem; color: #475569; margin-top: 6px; text-align: center;">Generates a transparent border overlay via Gemini 3.1 Flash</p>
+                    <p style="font-size: 0.63rem; color: #475569; margin-top: 6px; text-align: center;">Generates a transparent border overlay via Nano Banana 2</p>
                     </div>
                 </div>
             </div>
@@ -1019,11 +1030,55 @@
     </div>
 
     <script>
+        // ============ Shared config ============
+        const GEMINI_TEXT_MODEL = 'gemini-3.5-flash';
+        const GEMINI_IMAGE_MODELS = {
+            flash: 'gemini-3.1-flash-image',   // Nano Banana 2
+            pro: 'gemini-3-pro-image'          // Nano Banana Pro
+        };
+        function getGeminiKey() {
+            if (typeof GEMINI_API_KEY !== 'undefined' && GEMINI_API_KEY) return GEMINI_API_KEY;
+            if (typeof GOOGLE_API_KEY !== 'undefined' && GOOGLE_API_KEY) return GOOGLE_API_KEY;
+            if (window.CONFIG && window.CONFIG.GEMINI_API_KEY) return window.CONFIG.GEMINI_API_KEY;
+            return null;
+        }
+
+        // Aspect ratios the Gemini image API accepts — pick the closest to the canvas
+        function nearestAspectRatio(w, h) {
+            const supported = ['1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9', '21:9'];
+            const target = w / h;
+            let best = supported[0], bestDiff = Infinity;
+            for (const r of supported) {
+                const [a, b] = r.split(':').map(Number);
+                const diff = Math.abs(a / b - target);
+                if (diff < bestDiff) { bestDiff = diff; best = r; }
+            }
+            return best;
+        }
+
+        // Gemini tokenizes large inputs down anyway; cap what we upload so
+        // Ultra captures (5120px) don't blow the inline request size limit.
+        const MAX_API_INPUT_PX = 3072;
+        function canvasBase64ForApi(canvas) {
+            const longest = Math.max(canvas.width, canvas.height);
+            if (longest <= MAX_API_INPUT_PX) {
+                return canvas.toDataURL('image/png').split(',')[1];
+            }
+            const f = MAX_API_INPUT_PX / longest;
+            const tmp = document.createElement('canvas');
+            tmp.width = Math.round(canvas.width * f);
+            tmp.height = Math.round(canvas.height * f);
+            tmp.getContext('2d').drawImage(canvas, 0, 0, tmp.width, tmp.height);
+            console.log(`ℹ️ Downscaled API input ${canvas.width}×${canvas.height} → ${tmp.width}×${tmp.height} (output resolution is set by imageConfig, not the input)`);
+            return tmp.toDataURL('image/png').split(',')[1];
+        }
+
         // ============ State ============
         let sourceImage = null;       // Original uploaded Image element
         let logoImage = null;         // Logo Image element
         let activeFilter = 'original';
         let activeBorder = 'none';    // Border style
+        let aiBorderImage = null;     // AI-generated border overlay (composited in renderCanvas)
         let brandKit = null;          // { colors: [], fonts: [] }
 
         // Overlay states
@@ -1098,24 +1153,38 @@
             reader.readAsDataURL(file);
         }
 
-        // ============ Auto-load from Pinpointer (sessionStorage handoff) ============
-        // Persist bounds in memory so tile gen can use them after sessionStorage is cleared
+        // ============ Auto-load from Pinpointer (IndexedDB handoff) ============
+        // Persist bounds in memory so tile gen can use them after the handoff loads
         window.mapBoundsData = null;
-        (function checkPinpointerHandoff() {
-            const dataUrl = sessionStorage.getItem('studioMapImage');
-            if (!dataUrl) return;
 
-            // Save bounds BEFORE clearing sessionStorage
-            const boundsRaw = sessionStorage.getItem('studioBounds');
-            if (boundsRaw) {
-                window.mapBoundsData = JSON.parse(boundsRaw);
-                console.log('✓ Saved map bounds for tile gen:', window.mapBoundsData);
-            }
+        function loadStudioHandoff() {
+            return new Promise((resolve) => {
+                const open = indexedDB.open('hipmaps-studio', 1);
+                open.onupgradeneeded = () => {
+                    if (!open.result.objectStoreNames.contains('handoff')) {
+                        open.result.createObjectStore('handoff');
+                    }
+                };
+                open.onerror = () => resolve(null);
+                open.onsuccess = () => {
+                    const db = open.result;
+                    try {
+                        const req = db.transaction('handoff', 'readonly').objectStore('handoff').get('current');
+                        req.onsuccess = () => { db.close(); resolve(req.result || null); };
+                        req.onerror = () => { db.close(); resolve(null); };
+                    } catch (e) {
+                        db.close();
+                        resolve(null);
+                    }
+                };
+            });
+        }
 
+        function applyHandoffImage(dataUrl, label) {
             const img = new Image();
             img.onload = () => {
                 sourceImage = img;
-                document.getElementById('file-info').textContent = `Pinpointer capture (${img.width}×${img.height})`;
+                document.getElementById('file-info').textContent = `${label} (${img.width}×${img.height})`;
                 document.getElementById('file-info').style.display = 'block';
                 document.getElementById('dimensions-badge').textContent = `${img.width} × ${img.height}`;
                 document.getElementById('download-btn').disabled = false;
@@ -1124,17 +1193,40 @@
                 const aiBtn = document.getElementById('ai-stylize-btn');
                 if (aiBtn) aiBtn.disabled = false;
                 renderCanvas();
-                // Clean up large image data from sessionStorage (bounds saved in memory above)
-                sessionStorage.removeItem('studioMapImage');
-                sessionStorage.removeItem('studioVenues');
-                sessionStorage.removeItem('studioZoom');
-                sessionStorage.removeItem('studioCenter');
                 console.log('✓ Loaded Pinpointer capture into Studio');
             };
             img.onerror = () => {
                 console.warn('Could not load Pinpointer capture data URL.');
             };
             img.src = dataUrl;
+        }
+
+        (async function checkPinpointerHandoff() {
+            // Preferred path: IndexedDB (hi-res captures exceed the sessionStorage quota)
+            const handoff = await loadStudioHandoff();
+            if (handoff && handoff.image) {
+                if (handoff.bounds) {
+                    window.mapBoundsData = handoff.bounds;
+                    console.log('✓ Saved map bounds for tile gen:', window.mapBoundsData);
+                }
+                applyHandoffImage(handoff.image, 'Pinpointer capture');
+                return;
+            }
+
+            // Legacy fallback: sessionStorage handoff
+            const dataUrl = sessionStorage.getItem('studioMapImage');
+            if (!dataUrl) return;
+
+            const boundsRaw = sessionStorage.getItem('studioBounds');
+            if (boundsRaw) {
+                window.mapBoundsData = JSON.parse(boundsRaw);
+                console.log('✓ Saved map bounds for tile gen:', window.mapBoundsData);
+            }
+            applyHandoffImage(dataUrl, 'Pinpointer capture');
+            sessionStorage.removeItem('studioMapImage');
+            sessionStorage.removeItem('studioVenues');
+            sessionStorage.removeItem('studioZoom');
+            sessionStorage.removeItem('studioCenter');
         })();
 
         // ============ Logo Upload ============
@@ -1298,6 +1390,9 @@
             if (compassEnabled) drawCompass(ctx, canvas.width, canvas.height);
             if (textEnabled) drawText(ctx, canvas.width, canvas.height);
             if (logoEnabled && logoImage) drawLogo(ctx, canvas.width, canvas.height);
+
+            // AI-generated border frame sits on top so re-renders never wipe it
+            if (aiBorderImage) ctx.drawImage(aiBorderImage, 0, 0, canvas.width, canvas.height);
         }
 
         function drawVignette(ctx, w, h) {
@@ -1863,9 +1958,20 @@
                     throw new Error(err.error || `Server returned ${resp.status}`);
                 }
 
-                // Poll for progress
+                // Poll for progress (give up after 20 minutes so the button can't hang forever)
+                let pollAttempts = 0;
+                const maxPollAttempts = 600;
                 const pollInterval = setInterval(async () => {
                     try {
+                        if (++pollAttempts > maxPollAttempts) {
+                            clearInterval(pollInterval);
+                            btn.innerHTML = '❌ Timed out waiting for tiles — check the server terminal';
+                            setTimeout(() => {
+                                btn.disabled = false;
+                                btn.innerHTML = origText;
+                            }, 5000);
+                            return;
+                        }
                         const statusResp = await fetch('/tile-status');
                         const status = await statusResp.json();
 
@@ -2021,21 +2127,22 @@
             try {
                 // Get canvas as base64 (without the data:image/png;base64, prefix)
                 renderCanvas(); // ensure latest state
-                const dataUrl = canvas.toDataURL('image/png');
-                const base64 = dataUrl.split(',')[1];
+                const base64 = canvasBase64ForApi(canvas);
+
+                // Model + output resolution from the quality selector
+                const [tier, imageSize] = (document.getElementById('ai-quality')?.value || 'flash-2K').split('-');
+                const model = GEMINI_IMAGE_MODELS[tier] || GEMINI_IMAGE_MODELS.flash;
+                const aspectRatio = nearestAspectRatio(canvas.width, canvas.height);
 
                 progressBar.style.width = '25%';
-                statusText.textContent = 'Sending to Nano Banana 2 (Gemini 3.1 Flash)...';
+                statusText.textContent = `Sending to ${tier === 'pro' ? 'Nano Banana Pro' : 'Nano Banana 2'} (${imageSize})...`;
 
-                // Determine API key — try GEMINI_API_KEY first, fall back to GOOGLE_API_KEY
-                const apiKey = (typeof GEMINI_API_KEY !== 'undefined') ? GEMINI_API_KEY : 
-                               (typeof GOOGLE_API_KEY !== 'undefined') ? GOOGLE_API_KEY : null;
-
+                const apiKey = getGeminiKey();
                 if (!apiKey) {
                     throw new Error('No API key found. Add GEMINI_API_KEY or GOOGLE_API_KEY to config.js');
                 }
 
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent?key=${apiKey}`;
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
                 const requestBody = {
                     contents: [{
@@ -2053,7 +2160,11 @@
                     }],
                     generationConfig: {
                         responseModalities: ['IMAGE', 'TEXT'],
-                        temperature: 0.4
+                        temperature: 0.4,
+                        imageConfig: {
+                            aspectRatio: aspectRatio,
+                            imageSize: imageSize
+                        }
                     }
                 };
 
@@ -2061,8 +2172,10 @@
                 statusText.textContent = 'AI is tracing the map — this may take 30-60 seconds...';
 
                 console.log('🚀 Sending AI Stylize request:', {
-                    model: 'gemini-3.1-flash-image-preview',
-                    imageSize: Math.round(base64.length / 1024) + ' KB',
+                    model: model,
+                    imageSize: imageSize,
+                    aspectRatio: aspectRatio,
+                    inputSize: Math.round(base64.length / 1024) + ' KB',
                     promptLength: prompt.length,
                     apiUrl: apiUrl.replace(/key=.*/, 'key=***')
                 });
@@ -2111,6 +2224,13 @@
                 // Load the AI result onto the canvas
                 const aiImg = new Image();
                 aiImg.onload = () => {
+                    // Georeferencing maps pixels to the capture's geographic
+                    // rectangle — a changed aspect ratio would skew the tiles.
+                    const srcAspect = sourceImage.width / sourceImage.height;
+                    const aiAspect = aiImg.width / aiImg.height;
+                    if (Math.abs(srcAspect - aiAspect) / srcAspect > 0.01) {
+                        console.warn(`⚠️ AI output aspect ${aiImg.width}×${aiImg.height} differs from source ${sourceImage.width}×${sourceImage.height} — tile georeferencing may be skewed.`);
+                    }
                     sourceImage = aiImg;
 
                     // Reset CSS filters since AI already styled it
@@ -2192,6 +2312,12 @@
             'nautical': 'Create a rectangular border frame in a nautical/maritime style. Use rope knots, anchors at corners, compass star accents, and wave patterns. Colors: navy blue (#1B3A5C), white, and brass gold (#B8860B). The center must be completely transparent/empty. About 50 pixels wide. Like a frame on a ship captain\'s chart room wall.'
         };
 
+        document.getElementById('ai-border-remove-btn')?.addEventListener('click', function() {
+            aiBorderImage = null;
+            this.style.display = 'none';
+            renderCanvas();
+        });
+
         // Toggle custom border prompt
         document.getElementById('ai-border-theme').addEventListener('change', function() {
             const wrapper = document.getElementById('ai-border-custom-wrapper');
@@ -2206,8 +2332,6 @@
                 clearInterval(borderObserver);
             }
         }, 500);
-
-        let aiBorderImage = null; // Store generated border
 
         document.getElementById('ai-border-gen-btn').addEventListener('click', async () => {
             if (!sourceImage) return;
@@ -2235,14 +2359,13 @@
             btn.textContent = '⏳ Generating...';
             progress.style.display = 'block';
             progressBar.style.width = '20%';
-            statusText.textContent = 'Sending to Gemini 3.1 Flash...';
+            statusText.textContent = 'Sending to Nano Banana 2...';
 
             try {
-                const apiKey = (typeof GEMINI_API_KEY !== 'undefined') ? GEMINI_API_KEY :
-                               (typeof GOOGLE_API_KEY !== 'undefined') ? GOOGLE_API_KEY : null;
-                if (!apiKey) throw new Error('No API key found.');
+                const apiKey = getGeminiKey();
+                if (!apiKey) throw new Error('No API key found. Add GEMINI_API_KEY or GOOGLE_API_KEY to config.js');
 
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent?key=${apiKey}`;
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_IMAGE_MODELS.flash}:generateContent?key=${apiKey}`;
 
                 progressBar.style.width = '40%';
                 statusText.textContent = 'AI is designing your border...';
@@ -2254,7 +2377,11 @@
                         contents: [{ parts: [{ text: prompt }] }],
                         generationConfig: {
                             responseModalities: ['IMAGE', 'TEXT'],
-                            temperature: 0.6
+                            temperature: 0.6,
+                            imageConfig: {
+                                aspectRatio: nearestAspectRatio(canvas.width, canvas.height),
+                                imageSize: '2K'
+                            }
                         }
                     })
                 });
@@ -2288,19 +2415,19 @@
                     throw new Error(textResponse || 'No border image returned from AI.');
                 }
 
-                // Load border as overlay image
+                // Load border as overlay image — renderCanvas composites it on
+                // every redraw, so filters/pins/export no longer wipe it.
                 const borderImg = new Image();
                 borderImg.onload = () => {
                     aiBorderImage = borderImg;
-
-                    // Composite the border on top of the current canvas
-                    const ctx = canvas.getContext('2d');
-                    renderCanvas(); // render base first
-                    ctx.drawImage(borderImg, 0, 0, canvas.width, canvas.height);
+                    renderCanvas();
 
                     progressBar.style.width = '100%';
-                    statusText.textContent = '✓ Border applied! Use AI Stylize to regenerate map without border, or download as-is.';
+                    statusText.textContent = '✓ Border applied! It stays on top through edits and export.';
                     statusText.style.color = '#34d399';
+
+                    const removeBtn = document.getElementById('ai-border-remove-btn');
+                    if (removeBtn) removeBtn.style.display = 'block';
 
                     btn.disabled = false;
                     btn.textContent = '🎨 Generate AI Border';
@@ -2654,9 +2781,8 @@
             statusText.textContent = 'Sending to Gemini for brand analysis...';
 
             try {
-                const apiKey = (typeof GEMINI_API_KEY !== 'undefined') ? GEMINI_API_KEY :
-                               (typeof GOOGLE_API_KEY !== 'undefined') ? GOOGLE_API_KEY : null;
-                if (!apiKey) throw new Error('No API key found. Add GEMINI_API_KEY to config.js');
+                const apiKey = getGeminiKey();
+                if (!apiKey) throw new Error('No API key found. Add GEMINI_API_KEY or GOOGLE_API_KEY to config.js');
 
                 const parts = [];
 
@@ -2670,8 +2796,31 @@
                     parts.push({ inlineData: { mimeType: 'image/png', data: b64 } });
                 }
 
+                // The model can't browse — scrape the site server-side and feed
+                // it the actual page text instead of just the URL string.
                 const brandUrl = document.getElementById('brand-url').value.trim();
-                const promptText = `You are a brand design analyst. Analyze this ${brandLogoImage ? 'logo image' : ''}${brandLogoImage && brandUrl ? ' and ' : ''}${brandUrl ? 'website at ' + brandUrl : ''} and extract the brand identity.
+                let siteText = '';
+                if (brandUrl) {
+                    statusText.textContent = 'Fetching website content...';
+                    try {
+                        const scrapeResp = await fetch('/scrape', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ url: brandUrl })
+                        });
+                        if (scrapeResp.ok) {
+                            const scraped = await scrapeResp.json();
+                            siteText = (scraped.text || '').slice(0, 8000);
+                        }
+                    } catch (scrapeErr) {
+                        console.warn('Website scrape failed, analyzing from URL string only:', scrapeErr);
+                    }
+                }
+
+                const promptText = `You are a brand design analyst. Analyze this ${brandLogoImage ? 'logo image' : ''}${brandLogoImage && brandUrl ? ' and ' : ''}${brandUrl ? 'website at ' + brandUrl : ''} and extract the brand identity.${siteText ? `
+
+Website content:
+${siteText}` : ''}
 
 Return ONLY a valid JSON object with this exact structure (no markdown, no backticks, no explanation):
 {
@@ -2695,7 +2844,7 @@ For fonts, suggest Google Fonts that best match the visual style. Extract 4-6 co
                 progressBar.style.width = '40%';
                 statusText.textContent = 'AI is analyzing brand identity...';
 
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_TEXT_MODEL}:generateContent?key=${apiKey}`;
 
                 const resp = await fetch(apiUrl, {
                     method: 'POST',
