@@ -35,3 +35,13 @@ Monterywiththreepoints.png
 # Editor directories
 .idea/
 .vscode/
+
+# Claude local session directory
+.claude/
+
+# poc/ build artifacts (tile pyramid, source rasters, intermediate TIFFs)
+poc/poster_tiles/
+poc/*.tif
+poc/*.tif.aux.xml
+poc/stylized_4k.png
+poc/poster_girls_weekend.png
