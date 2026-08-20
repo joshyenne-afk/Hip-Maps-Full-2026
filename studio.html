@@ -635,6 +635,7 @@
                 <div style="margin-bottom: 12px;">
                     <label style="display: block; font-size: 0.7rem; font-weight: 600; color: #94a3b8; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.6px;">Style Preset</label>
                     <select id="ai-style-preset" class="studio-select" title="AI artistic style preset">
+                        <option value="hipmaps-house" selected>🗺️ HipMaps House Style</option>
                         <option value="italian-villa">🇮🇹 Italian Villa Weekend</option>
                         <option value="tuscan-trattoria">🍝 Tuscan Trattoria</option>
                         <option value="vintage-cartography">📜 Vintage Cartography</option>
@@ -2032,6 +2033,24 @@
 
         // ============ AI Stylize (Nano Banana) ============
         const aiStylePrompts = {
+            // House style: flat editorial cartography matching the printed HipMaps
+            // deliverables (Arista, Winery Sixteen 600, Heart of Willamette).
+            // Deliberately asks for FLAT fills + explicit road weight hierarchy —
+            // painterly/textured prompts produce muddy tiles that lose legibility
+            // once sliced. Labels/legend/compass are composited in Studio, not here.
+            'hipmaps-house': [
+                'Redraw this map as a flat, printed editorial map, in the style of a high-end illustrated tourist map poster.',
+                'CRITICAL: every road, coastline, water body and land boundary must stay at exactly the same pixel position. This is a tracing job, not a reinterpretation.',
+                '',
+                'RENDERING RULES:',
+                '- Use FLAT areas of solid color only. No photographic texture, no noise, no mottling, no gradients, no painterly brushwork, no drop shadows, no 3D relief.',
+                '- Land: warm cream parchment #F4E9D2. Parks and natural vegetation: flat muted sage green #B9C4A0. Water: flat soft blue-grey #A8C0CC. Vineyard and agricultural blocks: flat pale gold #E3D2A0.',
+                '- Roads must show a clear WEIGHT HIERARCHY as crisp solid strokes with clean vector-like edges: major highways widest in warm terracotta #C0553B, secondary roads medium weight in muted brick #B07A5A, local streets thinnest in soft grey-brown #9A8B7A.',
+                '- Keep the image bright and high contrast so it stays legible when reduced. Land must read light; roads and water must read clearly darker against it.',
+                '- Restrained and uncluttered. Think printed cartography, not a painting.',
+                '',
+                'Do NOT add any text, labels, numbers, pins, markers, logos, borders or legend.'
+            ].join('\n'),
             'italian-villa': 'Redraw this map in a romantic Italian villa style. Use warm terracotta and sun-bleached ochre for the land, deep Mediterranean blue for water, and paint the roads as winding golden-brown paths that resemble rustic Italian country lanes. Add a warm parchment texture to the background with a feel of aged Tuscan paper. The vineyard areas should be painted in rich olive green and sage. Use an elegant, hand-illustrated style reminiscent of a framed wall map in an Italian countryside estate. Keep all roads, coastlines, water bodies, and features in exactly the same pixel positions. Do not add any text labels. The palette should be: terracotta (#C65D3E), olive (#708238), ochre (#D4A849), Mediterranean blue (#1A6FB4), cream parchment (#F5E6C8).',
             'tuscan-trattoria': 'Transform this map into a whimsical Italian trattoria style illustration. Make the roads look like long, winding strands of golden spaghetti pasta on a warm red-and-white checkered tablecloth background. Water bodies should be pools of rich olive oil with a golden-green shimmer. Vineyard and park areas should be clusters of bright basil leaves and tomatoes. Keep all geographic features and roads in exactly the same pixel positions, but give everything a playful, food-inspired Italian restaurant aesthetic. The overall feel should be warm, fun, inviting — like a placemat at a family-owned trattoria. Do not add any text labels. Use colors: tomato red (#E23D28), pasta gold (#F2C94C), basil green (#4A7C41), olive oil (#C7A94B), mozzarella white (#FFF5E1).',
             'vintage-cartography': 'Redraw this map as a vintage hand-drawn cartography illustration. Use warm sepia and parchment tones, elegant calligraphic line work for roads, artistic shading for terrain, and hand-drawn coastline edges. Keep all roads, coastlines, water bodies, and venue markers in exactly the same pixel positions. Do not add any text labels. The result should look like a 19th century cartographer drew it by hand.',
