@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>HipMaps — Interactive Map Viewer</title>
+    <meta name="description" content="Explore your custom-styled HipMaps with interactive venue pins and tile overlays.">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🗺️</text></svg>">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0f172a;
+            overflow: hidden;
+            height: 100vh;
+            height: 100dvh;
+        }
+
+        #map {
+            width: 100%;
+            height: 100vh;
+            height: 100dvh;
+        }
+
+        /* ── Floating Controls ── */
+        .controls {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            background: rgba(15, 23, 42, 0.88);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            padding: 10px 16px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            z-index: 1000;
+            max-width: 92vw;
+        }
+
+        .ctrl-btn {
+            padding: 8px 14px;
+            border: none;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .ctrl-btn.primary {
+            background: linear-gradient(135deg, #F26522, #e05a1a);
+            color: white;
+        }
+        .ctrl-btn.primary:active { transform: scale(0.95); }
+
+        .ctrl-btn.ghost {
+            background: rgba(255, 255, 255, 0.08);
+            color: #64748b;
+        }
+        .ctrl-btn.ghost.active {
+            background: rgba(242, 101, 34, 0.2);
+            color: #F26522;
+            border: 1px solid rgba(242, 101, 34, 0.3);
+        }
+        .ctrl-btn.ghost:active { transform: scale(0.95); }
+
+        /* ── Branding ── */
+        .brand {
+            position: fixed;
+            top: env(safe-area-inset-top, 12px);
+            left: 12px;
+            padding-top: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            padding: 8px 14px;
+            border-radius: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 1000;
+        }
+
+        .brand h1 {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: white;
+        }
+
+        .brand .subtitle {
+            font-size: 0.65rem;
+            color: #64748b;
+        }
+
+        /* ── Venue Count Badge ── */
+        .venue-badge {
+            position: fixed;
+            top: env(safe-area-inset-top, 12px);
+            right: 12px;
+            padding-top: 8px;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            padding: 8px 12px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 1000;
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: #F26522;
+        }
+
+        /* ── Info Window Styling ── */
+        .venue-info {
+            font-family: 'Inter', sans-serif;
+            padding: 4px 0;
+            min-width: 180px;
+        }
+        .venue-info h3 {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 4px;
+        }
+        .venue-info .desc {
+            font-size: 0.78rem;
+            color: #64748b;
+            margin-bottom: 6px;
+        }
+        .venue-info .coords {
+            font-size: 0.65rem;
+            color: #94a3b8;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+        }
+        .venue-info .nav-link {
+            display: inline-block;
+            margin-top: 6px;
+            padding: 5px 10px;
+            background: #F26522;
+            color: white;
+            font-size: 0.72rem;
+            font-weight: 600;
+            border-radius: 6px;
+            text-decoration: none;
+        }
+
+        /* ── Loading ── */
+        .loading-overlay {
+            position: fixed;
+            inset: 0;
+            background: #0f172a;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.5s;
+        }
+        .loading-overlay.hide { opacity: 0; pointer-events: none; }
+        .loading-spinner {
+            width: 36px; height: 36px;
+            border: 3px solid rgba(242, 101, 34, 0.2);
+            border-top-color: #F26522;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        .loading-text {
+            margin-top: 14px;
+            font-size: 0.85rem;
+            color: #94a3b8;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── Blue Dot ── */
+        .blue-dot {
+            width: 16px; height: 16px;
+            background: #4285F4;
+            border: 2.5px solid white;
+            border-radius: 50%;
+            box-shadow: 0 0 0 0 rgba(66, 133, 244, 0.4);
+            animation: pulse-dot 2s ease-out infinite;
+        }
+        .blue-dot-ring {
+            position: absolute;
+            width: 40px; height: 40px;
+            top: -12px; left: -12px;
+            background: rgba(66, 133, 244, 0.12);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+        @keyframes pulse-dot {
+            0% { box-shadow: 0 0 0 0 rgba(66, 133, 244, 0.5); }
+            70% { box-shadow: 0 0 0 12px rgba(66, 133, 244, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(66, 133, 244, 0); }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="loading-overlay" id="loading">
+        <div class="loading-spinner"></div>
+        <p class="loading-text">Loading HipMaps…</p>
+    </div>
+
+    <div id="map"></div>
+
+    <div class="brand">
+        <h1>🗺️ HipMaps</h1>
+        <span class="subtitle" id="map-title">Viewer</span>
+    </div>
+
+    <div class="venue-badge" id="venue-badge" style="display:none;">
+        📍 <span id="venue-count">0</span> venues
+    </div>
+
+    <div class="controls">
+        <button class="ctrl-btn ghost active" id="toggle-btn" title="Toggle overlay on/off">🗺️ Overlay</button>
+        <button class="ctrl-btn ghost active" id="pins-btn" title="Toggle pins">📍 Pins</button>
+        <button class="ctrl-btn primary" id="locate-btn" title="Find my location">📡</button>
+    </div>
+
+    <script>
+        // ── Configuration ──
+        // Tile URL base — relative for local, absolute for hosted
+        const TILE_URL = 'tiles/{z}/{x}/{y}.png';
+
+        let map, tileOverlay, activeInfoWindow;
+        let venueMarkers = [];
+        let overlayVisible = true;
+        let pinsVisible = true;
+
+        async function initMap() {
+            const { Map } = await google.maps.importLibrary("maps");
+            const { AdvancedMarkerElement } = await google.maps.importLibrary("marker");
+            const { InfoWindow } = await google.maps.importLibrary("maps");
+
+            // Start centered on the user's GPS location
+            let startCenter = { lat: 38.30, lng: -122.45 }; // Sonoma area fallback
+            let startZoom = 14;
+
+            map = new Map(document.getElementById("map"), {
+                center: startCenter,
+                zoom: startZoom,
+                mapId: '655a16910df2ba15ec691449',
+                mapTypeControl: false,
+                streetViewControl: false,
+                fullscreenControl: true,
+                zoomControl: true,
+                gestureHandling: 'greedy',
+            });
+
+            // Load tile overlay (renders wherever tiles exist on the map)
+            loadTileOverlay();
+
+            // Load venues
+            loadVenues(AdvancedMarkerElement, InfoWindow);
+
+            // Controls
+            document.getElementById('toggle-btn').addEventListener('click', toggleOverlay);
+            document.getElementById('pins-btn').addEventListener('click', togglePins);
+            document.getElementById('locate-btn').addEventListener('click', () => startGeolocation(AdvancedMarkerElement));
+
+            // Auto-locate user on load
+            startGeolocation(AdvancedMarkerElement);
+
+            // Hide loading
+            setTimeout(() => {
+                document.getElementById('loading').classList.add('hide');
+            }, 800);
+        }
+
+        function loadTileOverlay() {
+            tileOverlay = new google.maps.ImageMapType({
+                getTileUrl: (coord, zoom) => {
+                    return TILE_URL
+                        .replace('{z}', zoom)
+                        .replace('{x}', coord.x)
+                        .replace('{y}', coord.y);
+                },
+                tileSize: new google.maps.Size(256, 256),
+                opacity: 1.0,
+                name: 'HipMaps Tiles'
+            });
+
+            map.overlayMapTypes.push(tileOverlay);
+        }
+
+        async function loadVenues(AdvancedMarkerElement, InfoWindow) {
+            try {
+                const resp = await fetch('venues.json');
+                if (!resp.ok) {
+                    console.warn('No venues.json found — pins will not be shown');
+                    return;
+                }
+                const venues = await resp.json();
+
+                if (!Array.isArray(venues) || venues.length === 0) return;
+
+                document.getElementById('venue-badge').style.display = '';
+                document.getElementById('venue-count').textContent = venues.length;
+
+                const bounds = new google.maps.LatLngBounds();
+
+                venues.forEach(venue => {
+                    if (!venue.lat || !venue.lng) return;
+
+                    // Custom pin element
+                    const pinEl = document.createElement('div');
+                    pinEl.style.cssText = `
+                        width: 28px; height: 28px;
+                        background: ${venue.color || '#F26522'};
+                        border: 2.5px solid white;
+                        border-radius: 50%;
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+                        cursor: pointer;
+                        transition: transform 0.15s;
+                    `;
+                    pinEl.addEventListener('mouseenter', () => pinEl.style.transform = 'scale(1.25)');
+                    pinEl.addEventListener('mouseleave', () => pinEl.style.transform = 'scale(1)');
+
+                    const marker = new AdvancedMarkerElement({
+                        map,
+                        position: { lat: venue.lat, lng: venue.lng },
+                        title: venue.name,
+                        content: pinEl,
+                    });
+
+                    const infoContent = `
+                        <div class="venue-info">
+                            <h3>${venue.name}</h3>
+                            ${venue.description ? `<p class="desc">${venue.description}</p>` : ''}
+                            <p class="coords">${venue.lat.toFixed(5)}, ${venue.lng.toFixed(5)}</p>
+                            <a class="nav-link" href="https://www.google.com/maps/dir/?api=1&destination=${venue.lat},${venue.lng}" target="_blank" rel="noopener">
+                                🧭 Navigate
+                            </a>
+                        </div>
+                    `;
+
+                    const infoWindow = new InfoWindow({ content: infoContent });
+
+                    marker.addListener('gmp-click', () => {
+                        if (activeInfoWindow) activeInfoWindow.close();
+                        infoWindow.open({ anchor: marker, map });
+                        activeInfoWindow = infoWindow;
+                    });
+
+                    venueMarkers.push(marker);
+                    bounds.extend({ lat: venue.lat, lng: venue.lng });
+                });
+
+                // Fit map to venue bounds
+                if (!bounds.isEmpty()) {
+                    map.fitBounds(bounds, { top: 80, bottom: 100, left: 20, right: 20 });
+                }
+
+            } catch (err) {
+                console.warn('Could not load venues:', err);
+            }
+        }
+
+        function toggleOverlay() {
+            overlayVisible = !overlayVisible;
+            const btn = document.getElementById('toggle-btn');
+            if (overlayVisible) {
+                map.overlayMapTypes.push(tileOverlay);
+                btn.classList.add('active');
+                btn.textContent = '🗺️ Overlay';
+            } else {
+                map.overlayMapTypes.clear();
+                btn.classList.remove('active');
+                btn.textContent = '🗺️ Overlay';
+            }
+        }
+
+        function togglePins() {
+            pinsVisible = !pinsVisible;
+            const btn = document.getElementById('pins-btn');
+            venueMarkers.forEach(m => m.map = pinsVisible ? map : null);
+            if (pinsVisible) {
+                btn.classList.add('active');
+                btn.textContent = '📍 Pins';
+            } else {
+                btn.classList.remove('active');
+                btn.textContent = '📍 Pins';
+            }
+        }
+
+        // ── Geolocation Blue Dot ──
+        let blueDotMarker = null;
+        let watchId = null;
+
+        function startGeolocation(AdvancedMarkerElement) {
+            if (!navigator.geolocation) {
+                alert('Geolocation not supported by your browser');
+                return;
+            }
+
+            const btn = document.getElementById('locate-btn');
+            btn.textContent = '⏳';
+
+            // Create blue dot element
+            const dotContainer = document.createElement('div');
+            dotContainer.style.position = 'relative';
+            const ring = document.createElement('div');
+            ring.className = 'blue-dot-ring';
+            const dot = document.createElement('div');
+            dot.className = 'blue-dot';
+            dotContainer.appendChild(ring);
+            dotContainer.appendChild(dot);
+
+            watchId = navigator.geolocation.watchPosition(
+                (pos) => {
+                    const userPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+
+                    if (!blueDotMarker) {
+                        blueDotMarker = new AdvancedMarkerElement({
+                            map,
+                            position: userPos,
+                            content: dotContainer,
+                            title: 'You are here',
+                            zIndex: 9999,
+                        });
+                        // Center on user first time
+                        map.panTo(userPos);
+                        map.setZoom(15);
+                    } else {
+                        blueDotMarker.position = userPos;
+                    }
+
+                    btn.textContent = '📡';
+                    btn.style.opacity = '1';
+                },
+                (err) => {
+                    console.warn('Geolocation error:', err.message);
+                    btn.textContent = '❌';
+                    setTimeout(() => btn.textContent = '📡', 2000);
+                },
+                { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
+            );
+        }
+
+        window.initMap = initMap;
+    </script>
+
+    <!-- Load API key from config, then load Maps -->
+    <script>
+        (function() {
+            const configScript = document.createElement('script');
+            configScript.src = 'config.js';
+            configScript.onload = function() {
+                if (typeof GOOGLE_API_KEY === 'undefined') {
+                    console.error('config.js loaded but GOOGLE_API_KEY not defined');
+                    return;
+                }
+                const mapsScript = document.createElement('script');
+                mapsScript.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_API_KEY}&callback=initMap&libraries=marker`;
+                mapsScript.async = true;
+                mapsScript.defer = true;
+                document.head.appendChild(mapsScript);
+            };
+            document.head.appendChild(configScript);
+        })();
+    </script>
+</body>
+
+</html>
