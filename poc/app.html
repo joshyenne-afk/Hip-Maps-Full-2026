@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Girls Weekend in Sonoma — HipMaps</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { height: 100%; overflow: hidden; font-family: 'Inter', sans-serif; }
+        body { background: #0f172a; display: flex; flex-direction: column; }
+
+        /* The POSTER is the map layer — no DOM chrome over it. */
+        #map { flex: 1 1 auto; background: #E8A33D; }
+
+        /* Venue strip, like the app's blue cards */
+        #strip {
+            flex: 0 0 auto;
+            max-height: 34%;
+            overflow-y: auto;
+            background: #0B63CE;
+            color: #fff;
+            -webkit-overflow-scrolling: touch;
+        }
+        .card {
+            display: flex; align-items: flex-start; gap: 11px;
+            padding: 11px 14px;
+            border-bottom: 1px solid rgba(255,255,255,.18);
+            cursor: pointer;
+        }
+        .card:hover { background: rgba(255,255,255,.09); }
+        .card .n {
+            width: 26px; height: 26px; border-radius: 50%;
+            background: #fff; color: #0B63CE;
+            display: grid; place-items: center;
+            font-weight: 700; font-size: .78rem; flex: 0 0 auto;
+        }
+        .card h3 { font-size: .92rem; font-weight: 600; }
+        .card p { font-size: .76rem; opacity: .85; margin-top: 2px; }
+
+        #locate {
+            position: absolute; right: 12px; bottom: 12px;
+            width: 46px; height: 46px; border-radius: 50%;
+            border: 2px solid #fff; background: #0B63CE; color: #fff;
+            font-size: 1.1rem; cursor: pointer; z-index: 6;
+            box-shadow: 0 3px 12px rgba(0,0,0,.45);
+        }
+        #wrap { position: relative; flex: 1 1 auto; display: flex; }
+        #toast {
+            position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%);
+            background: rgba(15,15,15,.9); color: #fff; padding: 7px 14px;
+            border-radius: 8px; font-size: .76rem; z-index: 7; display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="wrap">
+        <div id="map"></div>
+        <button id="locate" title="Show my location">📍</button>
+        <div id="toast"></div>
+    </div>
+    <nav id="strip"></nav>
+
+    <script>
+        const TILE_URL = 'poster_tiles/{z}/{x}/{y}.png';
+        let map, meta, venues = [], meMarker, meCircle, watchId = null;
+
+        function toast(m, ms = 4000) {
+            const t = document.getElementById('toast');
+            t.textContent = m; t.style.display = 'block';
+            clearTimeout(t._h); t._h = setTimeout(() => t.style.display = 'none', ms);
+        }
+
+        async function initMap() {
+            const { Map } = await google.maps.importLibrary('maps');
+            meta = await fetch('poster_bounds.json').then(r => r.json());
+            venues = await fetch('../public/venues.json').then(r => r.json()).catch(() => []);
+
+            // No mapId here on purpose: mapId and `styles` are mutually exclusive,
+            // and we need JS styles to strip Google's labels. Past the tile layer's
+            // max zoom you fall through to the basemap — unstyled, that means Google
+            // place names, POI pins and road shields suddenly appearing over a
+            // hand-illustrated map. These styles match the Static Maps capture
+            // styling, so the fall-through is a clean unlabelled surface.
+            map = new Map(document.getElementById('map'), {
+                center: meta.center, zoom: 12,
+                mapTypeControl: false, streetViewControl: false,
+                fullscreenControl: false, zoomControl: false, clickableIcons: false,
+                backgroundColor: '#E8A33D',
+                maxZoom: meta.maxZoom || 16,
+                minZoom: 10,
+                styles: [
+                    { featureType: 'all', elementType: 'labels', stylers: [{ visibility: 'off' }] },
+                    { featureType: 'poi', stylers: [{ visibility: 'off' }] },
+                    { featureType: 'transit', stylers: [{ visibility: 'off' }] },
+                    { featureType: 'administrative', elementType: 'geometry', stylers: [{ visibility: 'off' }] },
+                    { featureType: 'road', elementType: 'labels', stylers: [{ visibility: 'off' }] }
+                ]
+            });
+
+            const pb = meta.posterBounds;
+            const gb = new google.maps.LatLngBounds(
+                { lat: pb.south, lng: pb.west }, { lat: pb.north, lng: pb.east });
+
+            // The map is inside a flex column, so its final height is not known at
+            // construction time. Without this, Google Maps sizes itself against a
+            // stale box and never repaints — the pane just shows the background
+            // colour until something forces a pan. Re-fit on every size change.
+            const mapEl = document.getElementById('map');
+            let fitted = false;
+            const refit = () => {
+                if (!mapEl.offsetHeight) return;
+                google.maps.event.trigger(map, 'resize');
+                map.fitBounds(gb, 0);
+                // Nudge: without a pan, the map renders its background colour and
+                // never requests tiles (neither the basemap nor the overlay). A
+                // 1px round-trip forces the tile fetch. Visually a no-op.
+                map.panBy(1, 0);
+                map.panBy(-1, 0);
+                fitted = true;
+            };
+            new ResizeObserver(refit).observe(mapEl);
+            google.maps.event.addListenerOnce(map, 'idle', refit);
+            requestAnimationFrame(() => requestAnimationFrame(refit));
+            setTimeout(() => { if (!fitted) refit(); }, 600);
+
+            map.overlayMapTypes.push(new google.maps.ImageMapType({
+                getTileUrl: (c, z) => {
+                    const max = 1 << z;
+                    if (c.y < 0 || c.y >= max) return null;
+                    const x = ((c.x % max) + max) % max;
+                    return TILE_URL.replace('{z}', z).replace('{x}', x).replace('{y}', c.y);
+                },
+                tileSize: new google.maps.Size(256, 256), opacity: 1, name: 'HipMaps',
+                minZoom: 10, maxZoom: meta.maxZoom || 16
+            }));
+
+            // Registration probes: these sit at the SAME lat/lng as the pins painted
+            // into the poster. If they land on the painted pins, the padded
+            // georeferencing is correct.
+            const strip = document.getElementById('strip');
+            venues.forEach((v, i) => {
+                new google.maps.Marker({
+                    map, position: { lat: v.lat, lng: v.lng }, zIndex: 500,
+                    icon: {
+                        path: google.maps.SymbolPath.CIRCLE, scale: 7,
+                        fillColor: '#00E5FF', fillOpacity: .95,
+                        strokeColor: '#003B44', strokeWeight: 2
+                    },
+                    title: v.name
+                });
+                const c = document.createElement('div');
+                c.className = 'card';
+                c.innerHTML = `<span class="n">${i + 1}</span><div><h3>${
+                    v.name.replace(/\b\w/g, s => s.toUpperCase())}</h3><p>${
+                    v.website || 'Sonoma, California'}</p></div>`;
+                c.onclick = () => { map.panTo({ lat: v.lat, lng: v.lng }); map.setZoom(15); };
+                strip.appendChild(c);
+            });
+
+            document.getElementById('locate').onclick = locate;
+        }
+
+        function drawMe(lat, lng, acc) {
+            const p = { lat, lng };
+            if (!meMarker) {
+                meMarker = new google.maps.Marker({
+                    map, position: p, zIndex: 999,
+                    icon: {
+                        path: google.maps.SymbolPath.CIRCLE, scale: 8,
+                        fillColor: '#1A73E8', fillOpacity: 1,
+                        strokeColor: '#fff', strokeWeight: 3
+                    }
+                });
+                meCircle = new google.maps.Circle({
+                    map, center: p, radius: acc || 50,
+                    fillColor: '#1A73E8', fillOpacity: .14,
+                    strokeColor: '#1A73E8', strokeOpacity: .35, strokeWeight: 1
+                });
+            } else { meMarker.setPosition(p); meCircle.setCenter(p); meCircle.setRadius(acc || 50); }
+        }
+
+        function locate() {
+            if (!navigator.geolocation) return toast('Geolocation unsupported.');
+            toast('Requesting location…', 2000);
+            watchId = navigator.geolocation.watchPosition(
+                p => { drawMe(p.coords.latitude, p.coords.longitude, p.coords.accuracy);
+                       map.panTo({ lat: p.coords.latitude, lng: p.coords.longitude });
+                       toast(`Located ±${Math.round(p.coords.accuracy)} m`); },
+                e => toast('Location unavailable: ' + e.message),
+                { enableHighAccuracy: true, timeout: 10000 });
+        }
+
+        // Simulated fix, for verifying dot rendering where real GPS is denied.
+        window.demoDot = (lat = 38.2915, lng = -122.4580, z = 14) => {
+            drawMe(lat, lng, 70); map.panTo({ lat, lng }); map.setZoom(z);
+            toast('DEMO dot — simulated position'); return `dot @ ${lat},${lng}`;
+        };
+        window.initMap = initMap;
+    </script>
+    <script>
+        (function () {
+            const c = document.createElement('script');
+            c.src = '../config.js';
+            c.onload = () => {
+                const s = document.createElement('script');
+                s.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_API_KEY}&callback=initMap`;
+                s.async = true; document.head.appendChild(s);
+            };
+            document.head.appendChild(c);
+        })();
+    </script>
+</body>
+
+</html>
